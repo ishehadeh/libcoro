@@ -57,8 +57,13 @@
  *    do it's job. Coroutine creation is much slower than UCONTEXT, but
  *    context switching is often a bit cheaper. It should work on almost
  *    all unices. Use this for GNU/Linux + glibc-2.2. glibc-2.1 and below
- *    do not work with any model (neither sigaltstack nor context functions
- *    are implemented)
+ *    do not work with any sane model (neither sigaltstack nor context
+ *    functions are implemented)
+ *
+ * -DCORO_LINUX
+ *
+ *    Old GNU/Linux systems (<= glibc-2.1) work with this implementation
+ *    (very fast).
  *
  * -DCORO_LOOSE
  *
@@ -108,9 +113,11 @@ void coro_transfer(coro_context *prev, coro_context *next);
  * That was it. No other user-visible functions are implemented here.
  */
 
-#if !defined(CORO_LOOSE) && !defined(CORO_UCONTEXT) && !defined(CORO_SJLJ)
+#if !defined(CORO_LOOSE) && !defined(CORO_UCONTEXT) \
+    && !defined(CORO_SJLJ) && !defined(CORO_LINUX)
 # if defined(WINDOWS)
 #  define CORO_LOOSE 1 /* you don't win with windoze */
+# elif defined(__linux) && defined(__x86)
 # elif defined(HAVE_UCONTEXT_H)
 #  define CORO_UCONTEXT 1
 # elif defined(HAVE_SETJMP_H) && defined(HAVE_SIGALTSTACK)
@@ -130,7 +137,7 @@ struct coro_context {
 
 #define coro_transfer(p,n) swapcontext(&((p)->uc), &((n)->uc))
 
-#elif CORO_SJLJ || CORO_LOOSE
+#elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX
 
 #include <setjmp.h>
 

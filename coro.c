@@ -32,7 +32,7 @@
 
 #include "coro.h"
 
-#if CORO_LOOSE || CORO_SJLJ
+#if CORO_LOOSE || CORO_SJLJ || CORO_LINUX
 
 #include <signal.h>
 
@@ -91,7 +91,7 @@ void coro_create(coro_context *ctx,
 
   makecontext (&(ctx->uc), (void (*)()) coro, 1, arg);
 
-#elif CORO_SJLJ || CORO_LOOSE
+#elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX
 
 # if CORO_SJLJ
   stack_t ostk, nstk;
@@ -151,11 +151,29 @@ void coro_create(coro_context *ctx,
 
   sigprocmask (SIG_SETMASK, &osig, 0);
 
-# elif MS_LOOSE
+# elif CORO_LOOSE
 
-  coro_save (ctx);
+  setjmp (ctx->env);
   ctx->env[7] = (int)((char *)sptr + ssize);
-  ctx->env[8] = (int)coro;
+  ctx->env[8] = (int)coro_init;
+
+# elif CORO_LINUX
+
+  setjmp (ctx->env);
+#if defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
+    && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(JB_PC) && defined(JB_SP)
+  ctx->env[0].__jmpbuf[JB_PC] = (int)coro_init;
+  ctx->env[0].__jmpbuf[JB_SP] = (int)((char *)sptr + ssize);
+#elif defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
+    && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(__mc68000__)
+  ctx->env[0].__jmpbuf[0].__aregs[0] = (long int)coro_init;
+  ctx->env[0].__jmpbuf[0].__sp = (int *)((char *)sptr + ssize);
+#elif defined(__GNU_LIBRARY__) && defined(__i386__)
+  ctx->env[0].__jmpbuf[0].__pc = (char *)coro_init;
+  ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize);
+#else
+#error "Unsupported Linux (g)libc version and/or platform"
+#endif
 
 # endif
 
