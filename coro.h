@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001 Marc Alexander Lehmann <pcg@goof.com>
+ * Copyright (c) 2001-2005 Marc Alexander Lehmann <schmorp@schmorp.de>
  * 
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
@@ -33,15 +33,16 @@
  * build your own process abstraction using it or - better - just use GNU
  * Portable Threads, http://www.gnu.org/software/pth/.
  *
- * VERSION: 0.1
  */
 
 #ifndef CORO_H
 #define CORO_H
 
+#define CORO_VERSION 1
+
 /*
  * This library consists of only three files
- * coro.h, coro.c and LICENSE
+ * coro.h, coro.c and LICENSE (and optionally README)
  *
  * It implements what is known as coroutines, in a hopefully
  * portable way. At the moment you have to define which kind

@@ -21,7 +21,7 @@
  *  You should have received a copy of the GNU Lesser General Public
  *  License along with this file; if not, write to the Free Software
  *  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA 02111-1307
- *  USA, or contact Marc Lehmann <pcg@goof.com>.
+ *  USA, or contact Marc Lehmann <schmorp@schmorp.de>.
  */
 
 #include <stdio.h>

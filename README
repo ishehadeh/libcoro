@@ -3,4 +3,4 @@ note that the file conftest.c in this distribution is under the GPL. It is
 not needed for proper operation of this library though, for that, coro.h
 and coro.c suffice.
 
-Marc Lehmann <pcg@goof.com>
+Marc Lehmann <schmorp@schmorp.de>
