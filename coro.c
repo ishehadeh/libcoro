@@ -182,6 +182,9 @@ void coro_create(coro_context *ctx,
 #elif defined(__GNU_LIBRARY__) && defined(__i386__)
   ctx->env[0].__jmpbuf[0].__pc = (char *)coro_init;
   ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize);
+#elif defined(__GNU_LIBRARY__) && defined(__amd64__)
+  ctx->env[0].__jmpbuf[JB_PC]  = (long)coro_init;
+  ctx->env[0].__jmpbuf[JB_RSP] = (long)((char *)sptr + ssize);
 #else
 #error "linux libc or architecture not supported"
 #endif
