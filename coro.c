@@ -36,7 +36,7 @@
 
 /* IRIX is decidedly NON-unix */
 #if __sgi
-# define STACK_ADJUST(sp,ss) ((ss) - sizeof (long) + (char *)(sp))
+# define STACK_ADJUST(sp,ss) ((ss) - 8 + (char *)(sp))
 #else
 # define STACK_ADJUST(sp,ss) (ss)
 #endif
@@ -182,8 +182,8 @@ void coro_create(coro_context *ctx,
 # elif CORO_IRIX
 
   setjmp (ctx->env);
-  ctx->env[JB_PC] = (int)coro_init;
-  ctx->env[JB_SP] = (int)((char *)sptr + ssize);
+  ctx->env[JB_PC] = (__uint64_t)coro_init;
+  ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST(sptr,ssize);
 
 # endif
 
