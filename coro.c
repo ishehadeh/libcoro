@@ -173,8 +173,8 @@ void coro_create(coro_context *ctx,
   setjmp (ctx->env);
 #if defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
     && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(JB_PC) && defined(JB_SP)
-  ctx->env[0].__jmpbuf[JB_PC] = (int)coro_init;
-  ctx->env[0].__jmpbuf[JB_SP] = (int)STACK_ADJUST_PTR (sptr,ssize);
+  ctx->env[0].__jmpbuf[JB_PC] = (long)coro_init;
+  ctx->env[0].__jmpbuf[JB_SP] = (long)STACK_ADJUST_PTR (sptr,ssize);
 #elif defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
     && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(__mc68000__)
   ctx->env[0].__jmpbuf[0].__aregs[0] = (long int)coro_init;
