@@ -48,7 +48,7 @@ coro_init (void)
 
   coro_transfer ((coro_context *)new_coro, (coro_context *)create_coro);
 
-  func (arg);
+  func ((void *)arg);
 
   /* the new coro returned. bad. just abort() for now */
   abort ();
@@ -63,7 +63,7 @@ static volatile int trampoline_count;
 static void
 trampoline(int sig)
 {
-  if (setjmp (&(((coro_context *)new_coro)->env)))
+  if (setjmp (((coro_context *)new_coro)->env))
     coro_init (); /* start it */
   else
     trampoline_count++;
