@@ -32,6 +32,8 @@
  * This coroutine library is very much stripped down. You should either
  * build your own process avstraction using it or - better - just use GNU
  * Portable Threads, http://www.gnu.org/software/pth/.
+ *
+ * VERSION: 0.1
  */
 
 #ifndef CORO_H
