@@ -149,6 +149,10 @@ struct coro_context {
 
 #elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
 
+#ifdef CORO_LINUX
+# define _GNU_SOURCE // for linux libc
+#endif
+
 #include <setjmp.h>
 
 struct coro_context {
