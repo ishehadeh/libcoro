@@ -96,7 +96,7 @@ void coro_create(coro_context *ctx,
   getcontext (&(ctx->uc));
 
   ctx->uc.uc_link           =  0;
-  ctx->uc.uc_stack.ss_sp    = STACK_ADJUST_PTR(sptr,ssize);
+  ctx->uc.uc_stack.ss_sp    = STACK_ADJUST_PTR (sptr,ssize);
   ctx->uc.uc_stack.ss_size  = (size_t) STACK_ADJUST_SIZE (sptr,ssize);
   ctx->uc.uc_stack.ss_flags = 0;
 
@@ -132,7 +132,7 @@ void coro_create(coro_context *ctx,
     perror ("sigaction");
 
   /* set the new stack */
-  nstk.ss_sp    = STACK_ADJUST(sptr,ssize); /* yes, some platforms (IRIX) get this wrong. */
+  nstk.ss_sp    = STACK_ADJUST_PTR (sptr,ssize); /* yes, some platforms (IRIX) get this wrong. */
   nstk.ss_size  = STACK_ADJUST_SIZE (sptr,ssize);
   nstk.ss_flags = 0;
 
@@ -174,7 +174,7 @@ void coro_create(coro_context *ctx,
 #if defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
     && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(JB_PC) && defined(JB_SP)
   ctx->env[0].__jmpbuf[JB_PC] = (int)coro_init;
-  ctx->env[0].__jmpbuf[JB_SP] = (int)STACK_ADJUST_PTR(sptr,ssize);
+  ctx->env[0].__jmpbuf[JB_SP] = (int)STACK_ADJUST_PTR (sptr,ssize);
 #elif defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
     && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(__mc68000__)
   ctx->env[0].__jmpbuf[0].__aregs[0] = (long int)coro_init;
@@ -190,7 +190,7 @@ void coro_create(coro_context *ctx,
 
   setjmp (ctx->env);
   ctx->env[JB_PC] = (__uint64_t)coro_init;
-  ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST_PTR(sptr,ssize);
+  ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST_PTR (sptr,ssize);
 
 # endif
 
