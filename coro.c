@@ -49,6 +49,7 @@
 #if CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
 
 #if CORO_SJLJ
+# include <stdio.h>
 # include <signal.h>
 #endif
 

@@ -150,7 +150,7 @@ struct coro_context {
 
 #elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
 
-#ifdef CORO_LINUX
+#if defined(CORO_LINUX) && !defined(_GNU_SOURCE)
 # define _GNU_SOURCE // for linux libc
 #endif
 
