@@ -84,10 +84,9 @@
  */
 
 /*
- * This is the type for the top function of a new coroutine.
+ * This is the type for the initialization function of a new coroutine.
  */
 typedef void (*coro_func)(void *);
-
 
 /*
  * A coroutine state is saved in the following structure. Treat it as a

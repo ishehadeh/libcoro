@@ -32,11 +32,18 @@
 
 #include "coro.h"
 
+#if !defined(STACK_ADJUST_PTR)
 /* IRIX is decidedly NON-unix */
-#if __sgi
-# define STACK_ADJUST(sp,ss) ((char *)(sp) + (ss) - 8)
-#else
-# define STACK_ADJUST(sp,ss) (sp)
+# if __sgi
+#  define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss) - 8)
+#  define STACK_ADJUST_SIZE(sp,ss) ((ss) - 8)
+# elif __i386__ && CORO_LINUX
+#  define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss))
+#  define STACK_ADJUST_SIZE(sp,ss) (ss)
+# else
+#  define STACK_ADJUST_PTR(sp,ss) (sp)
+#  define STACK_ADJUST_SIZE(sp,ss) (ss)
+# endif
 #endif
 
 #if CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
@@ -89,8 +96,8 @@ void coro_create(coro_context *ctx,
   getcontext (&(ctx->uc));
 
   ctx->uc.uc_link           =  0;
-  ctx->uc.uc_stack.ss_sp    = STACK_ADJUST(sptr,ssize);
-  ctx->uc.uc_stack.ss_size  = (size_t) ssize;
+  ctx->uc.uc_stack.ss_sp    = STACK_ADJUST_PTR(sptr,ssize);
+  ctx->uc.uc_stack.ss_size  = (size_t) STACK_ADJUST_SIZE (sptr,ssize);
   ctx->uc.uc_stack.ss_flags = 0;
 
   makecontext (&(ctx->uc), (void (*)()) coro, 1, arg);
@@ -126,7 +133,7 @@ void coro_create(coro_context *ctx,
 
   /* set the new stack */
   nstk.ss_sp    = STACK_ADJUST(sptr,ssize); /* yes, some platforms (IRIX) get this wrong. */
-  nstk.ss_size  = ssize;
+  nstk.ss_size  = STACK_ADJUST_SIZE (sptr,ssize);
   nstk.ss_flags = 0;
 
   if (sigaltstack (&nstk, &ostk) < 0)
@@ -167,7 +174,7 @@ void coro_create(coro_context *ctx,
 #if defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
     && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(JB_PC) && defined(JB_SP)
   ctx->env[0].__jmpbuf[JB_PC] = (int)coro_init;
-  ctx->env[0].__jmpbuf[JB_SP] = (int)((char *)sptr + ssize);
+  ctx->env[0].__jmpbuf[JB_SP] = (int)STACK_ADJUST_PTR(sptr,ssize);
 #elif defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
     && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(__mc68000__)
   ctx->env[0].__jmpbuf[0].__aregs[0] = (long int)coro_init;
@@ -183,7 +190,7 @@ void coro_create(coro_context *ctx,
 
   setjmp (ctx->env);
   ctx->env[JB_PC] = (__uint64_t)coro_init;
-  ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST(sptr,ssize);
+  ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST_PTR(sptr,ssize);
 
 # endif
 
