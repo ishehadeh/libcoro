@@ -165,8 +165,8 @@ void coro_create(coro_context *ctx,
 # elif CORO_LOOSE
 
   setjmp (ctx->env);
-  ctx->env[7] = (int)((char *)sptr + ssize);
-  ctx->env[8] = (int)coro_init;
+  ctx->env[7] = (long)((char *)sptr + ssize);
+  ctx->env[8] = (long)coro_init;
 
 # elif CORO_LINUX
 
