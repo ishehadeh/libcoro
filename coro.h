@@ -30,7 +30,7 @@
  * go to Ralf S. Engelschall <rse@engelschall.com>.
  *
  * This coroutine library is very much stripped down. You should either
- * build your own process avstraction using it or - better - just use GNU
+ * build your own process abstraction using it or - better - just use GNU
  * Portable Threads, http://www.gnu.org/software/pth/.
  *
  * VERSION: 0.1
@@ -103,9 +103,9 @@ typedef struct coro_context coro_context;
  * Allocating/deallocating the stack is your own responsibility, so there is
  * no coro_destroy function.
  */
-void coro_create(coro_context *ctx,
-                 coro_func coro, void *arg,
-                 void *sptr, long ssize);
+void coro_create (coro_context *ctx,
+                  coro_func coro, void *arg,
+                  void *sptr, long ssize);
 
 /*
  * The following prototype defines the coroutine switching function. It is
@@ -145,7 +145,7 @@ struct coro_context {
   ucontext_t uc;
 };
 
-#define coro_transfer(p,n) swapcontext(&((p)->uc), &((n)->uc))
+#define coro_transfer(p,n) swapcontext (&((p)->uc), &((n)->uc))
 
 #elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
 
@@ -155,7 +155,7 @@ struct coro_context {
   jmp_buf env;
 };
 
-#define coro_transfer(p,n) if (!setjmp ((p)->env)) longjmp ((n)->env, 1)
+#define coro_transfer(p,n) do { if (!setjmp ((p)->env)) longjmp ((n)->env, 1); } while(0)
 
 #endif
 
