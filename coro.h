@@ -37,25 +37,96 @@
 #ifndef CORO_H
 #define CORO_H
 
+/*
+ * This library consists of only three files
+ * coro.h, coro.c and LICENSE
+ *
+ * It implements what is known as coroutines, in a hopefully
+ * portable way. At the moment you have to define which kind
+ * of implementation flavour you want:
+ *
+ * -DCORO_UCONTEXT
+ *
+ *    This flavour uses SUSv2's get/set/swap/makecontext functions that
+ *    unfortunately only newer unices support.
+ *    Use this for GNU/Linux + glibc-2.2.3.
+ *
+ * -DCORO_SJLJ
+ *
+ *    This flavour uses SUSv'2 setjmp/longjmp and sigaltstack functions to
+ *    do it's job. Coroutine creation is much slower than UCONTEXT, but
+ *    context switching is often a bit cheaper. It should work on almost
+ *    all unices. Use this for GNU/Linux + glibc-2.2. glibc-2.1 and below
+ *    do not work with any model (neither sigaltstack nor context functions
+ *    are implemented)
+ *
+ * -DCORO_LOOSE
+ *
+ *    Microsoft's highly proprietary platform doesn't support sigaltstack, and
+ *    this automatically selects a suitable workaround for this platform.
+ *    (untested)
+ *
+ * If you define neither of these symbols, coro.h will try to autodetect
+ * the model.  This currently works for CORO_LOOSE only. For the other
+ * alternatives you should check (e.g. using autoconf) and define the
+ * following symbols: HAVE_UCONTEXT_H / HAVE_SETJMP_H / HAVE_SIGALTSTACK.
+ */
+
+/*
+ * This is the type for the top function of a new coroutine.
+ */
 typedef void (*coro_func)(void *);
 
-#if defined(WINDOWS)
-# define CORO_LOOSE 1 /* you don't win with windoze */
-#elif defined(HAVE_UCONTEXT_H)
-# define CORO_UCONTEXT 1
-#elif defined(HAVE_SETJMP_H) && defined(HAVE_SIGALTSTACK)
-# define CORO_SJLJ 1
-#else
+
+/*
+ * A coroutine state is saved in the following structure. Treat it as a
+ * opaque type. errno and sigmask might be saved, but don't rely on it,
+ * implement your own switching primitive.
+ */
+typedef struct coro_context coro_context;
+
+/*
+ * This function creates a new coroutine. Apart from a pointer to an
+ * uninitialized coro_context, it expects a pointer to the entry function
+ * and the single pointer value that is given to it as argument.
+ *
+ * Allocating/deallocating the stack is your own responsibility, so there is
+ * no coro_destroy function.
+ */
+void coro_create(coro_context *ctx,
+                 coro_func coro, void *arg,
+                 void *sptr, long ssize);
+
+/*
+ * The following prototype defines the coroutine switching function. It is
+ * usually implemented as a macro, so watch out.
+ *
+void coro_transfer(coro_context *prev, coro_context *next);
+ */
+
+/*
+ * That was it. No other user-visible functions are implemented here.
+ */
+
+#if !defined(CORO_LOOSE) && !defined(CORO_UCONTEXT) && !defined(CORO_SJLJ)
+# if defined(WINDOWS)
+#  define CORO_LOOSE 1 /* you don't win with windoze */
+# elif defined(HAVE_UCONTEXT_H)
+#  define CORO_UCONTEXT 1
+# elif defined(HAVE_SETJMP_H) && defined(HAVE_SIGALTSTACK)
+#  define CORO_SJLJ 1
+# else
 error unknown or unsupported architecture
+# endif
 #endif
 
 #if CORO_UCONTEXT
 
 #include <ucontext.h>
 
-typedef struct {
+struct coro_context {
   ucontext_t uc;
-} coro_context;
+};
 
 #define coro_transfer(p,n) swapcontext(&((p)->uc), &((n)->uc))
 
@@ -63,17 +134,13 @@ typedef struct {
 
 #include <setjmp.h>
 
-typedef struct {
+struct coro_context {
   jmp_buf env;
-} coro_context;
+};
 
 #define coro_transfer(p,n) if (!setjmp ((p)->env)) longjmp ((n)->env, 1)
 
 #endif
-
-void coro_create(coro_context *ctx,
-                 coro_func coro, void *arg,
-                 void *sptr, long ssize);
 
 #endif
 
