@@ -46,7 +46,7 @@ coro_init (void)
   volatile coro_func func = coro_init_func;
   volatile void *arg = coro_init_arg;
 
-  coro_transfer (new_coro, create_coro);
+  coro_transfer ((coro_context *)new_coro, (coro_context *)create_coro);
 
   func (arg);
 
@@ -63,7 +63,7 @@ static volatile int trampoline_count;
 static void
 trampoline(int sig)
 {
-  if (setjmp (&(new_coro->env)))
+  if (setjmp (&(((coro_context *)new_coro)->env)))
     coro_init (); /* start it */
   else
     trampoline_count++;
@@ -159,7 +159,7 @@ void coro_create(coro_context *ctx,
 
 # endif
 
-  coro_transfer (create_coro, new_coro);
+  coro_transfer ((coro_context *)create_coro, (coro_context *)new_coro);
 
 #else
 error unsupported architecture
