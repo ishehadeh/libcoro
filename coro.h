@@ -73,6 +73,10 @@
  *    this automatically selects a suitable workaround for this platform.
  *    (untested)
  *
+ * -DCORO_IRIX
+ *
+ *    SGI's version of Microsoft's NT ;)
+ *
  * If you define neither of these symbols, coro.h will try to autodetect
  * the model.  This currently works for CORO_LOOSE only. For the other
  * alternatives you should check (e.g. using autoconf) and define the
@@ -115,8 +119,11 @@ void coro_transfer(coro_context *prev, coro_context *next);
  * That was it. No other user-visible functions are implemented here.
  */
 
+/*****************************************************************************/
+
 #if !defined(CORO_LOOSE) && !defined(CORO_UCONTEXT) \
-    && !defined(CORO_SJLJ) && !defined(CORO_LINUX)
+    && !defined(CORO_SJLJ) && !defined(CORO_LINUX) \
+    && !defined(CORO_IRIX)
 # if defined(WINDOWS)
 #  define CORO_LOOSE 1 /* you don't win with windoze */
 # elif defined(__linux) && defined(__x86)
@@ -129,6 +136,8 @@ error unknown or unsupported architecture
 # endif
 #endif
 
+/*****************************************************************************/
+
 #if CORO_UCONTEXT
 
 #include <ucontext.h>
@@ -139,7 +148,7 @@ struct coro_context {
 
 #define coro_transfer(p,n) swapcontext(&((p)->uc), &((n)->uc))
 
-#elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX
+#elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
 
 #include <setjmp.h>
 

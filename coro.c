@@ -32,7 +32,14 @@
 
 #include "coro.h"
 
-#if CORO_LOOSE || CORO_SJLJ || CORO_LINUX
+#if CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
+
+/* IRIX is decidedly NON-unix */
+#if __sgi
+# define STACK_ADJUST(sp,ss) ((ss) - sizeof (long) + (char *)(sp))
+#else
+# define STACK_ADJUST(sp,ss) (ss)
+#endif
 
 #include <signal.h>
 
@@ -55,7 +62,6 @@ coro_init (void)
 }
 
 # if CORO_SJLJ
-# define coro_save(ctx)     (void)setjmp((ctx)->env)
 
 static volatile int trampoline_count;
 
@@ -71,8 +77,6 @@ trampoline(int sig)
 
 # endif
 
-#elif CORO_UCONTEXT
-# define coro_save(ctx)     getcontext(&((ctx)->uc))
 #endif
 
 /* initialize a machine state */
@@ -84,14 +88,14 @@ void coro_create(coro_context *ctx,
 
   getcontext (&(ctx->uc));
 
-  ctx->uc.uc_link          =  0;
-  ctx->uc.uc_stack.ss_sp    = sptr;
+  ctx->uc.uc_link           =  0;
+  ctx->uc.uc_stack.ss_sp    = STACK_ADJUST(sptr,ssize);
   ctx->uc.uc_stack.ss_size  = (size_t) ssize;
   ctx->uc.uc_stack.ss_flags = 0;
 
   makecontext (&(ctx->uc), (void (*)()) coro, 1, arg);
 
-#elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX
+#elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
 
 # if CORO_SJLJ
   stack_t ostk, nstk;
@@ -121,7 +125,7 @@ void coro_create(coro_context *ctx,
     perror ("sigaction");
 
   /* set the new stack */
-  nstk.ss_sp    = sptr;
+  nstk.ss_sp    = STACK_ADJUST(sptr,ssize); /* yes, some platforms (IRIX) get this wrong. */
   nstk.ss_size  = ssize;
   nstk.ss_flags = 0;
 
@@ -172,8 +176,14 @@ void coro_create(coro_context *ctx,
   ctx->env[0].__jmpbuf[0].__pc = (char *)coro_init;
   ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize);
 #else
-#error "Unsupported Linux (g)libc version and/or platform"
+#error "linux libc or architecture not supported"
 #endif
+
+# elif CORO_IRIX
+
+  setjmp (ctx->env);
+  ctx->env[JB_PC] = (int)coro_init;
+  ctx->env[JB_SP] = (int)((char *)sptr + ssize);
 
 # endif
 
