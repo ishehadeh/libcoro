@@ -32,14 +32,14 @@
 
 #include "coro.h"
 
-#if CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
-
 /* IRIX is decidedly NON-unix */
 #if __sgi
-# define STACK_ADJUST(sp,ss) ((ss) - 8 + (char *)(sp))
+# define STACK_ADJUST(sp,ss) ((char *)(sp) + (ss) - 8)
 #else
-# define STACK_ADJUST(sp,ss) (ss)
+# define STACK_ADJUST(sp,ss) (sp)
 #endif
+
+#if CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
 
 #include <signal.h>
 
