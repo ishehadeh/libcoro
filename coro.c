@@ -48,7 +48,9 @@
 
 #if CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
 
-#include <signal.h>
+#if CORO_SJLJ
+# include <signal.h>
+#endif
 
 static volatile coro_func coro_init_func;
 static volatile void *coro_init_arg;
@@ -74,7 +76,7 @@ static volatile int trampoline_count;
 
 /* trampoline signal handler */
 static void
-trampoline(int sig)
+trampoline (int sig)
 {
   if (setjmp (((coro_context *)new_coro)->env))
     coro_init (); /* start it */
