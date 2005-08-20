@@ -38,7 +38,12 @@
 #ifndef CORO_H
 #define CORO_H
 
-#define CORO_VERSION 1
+#define CORO_VERSION 2
+
+/*
+ * Changes since API version 1:
+ * replaced bogus -DCORO_LOOSE with gramattically more correct -DCORO_LOSER
+ */
 
 /*
  * This library consists of only three files
@@ -68,7 +73,7 @@
  *    Old GNU/Linux systems (<= glibc-2.1) work with this implementation
  *    (very fast).
  *
- * -DCORO_LOOSE
+ * -DCORO_LOSER
  *
  *    Microsoft's highly proprietary platform doesn't support sigaltstack, and
  *    this automatically selects a suitable workaround for this platform.
@@ -79,7 +84,7 @@
  *    SGI's version of Microsoft's NT ;)
  *
  * If you define neither of these symbols, coro.h will try to autodetect
- * the model.  This currently works for CORO_LOOSE only. For the other
+ * the model.  This currently works for CORO_LOSER only. For the other
  * alternatives you should check (e.g. using autoconf) and define the
  * following symbols: HAVE_UCONTEXT_H / HAVE_SETJMP_H / HAVE_SIGALTSTACK.
  */
@@ -121,11 +126,11 @@ void coro_transfer(coro_context *prev, coro_context *next);
 
 /*****************************************************************************/
 
-#if !defined(CORO_LOOSE) && !defined(CORO_UCONTEXT) \
+#if !defined(CORO_LOSER) && !defined(CORO_UCONTEXT) \
     && !defined(CORO_SJLJ) && !defined(CORO_LINUX) \
     && !defined(CORO_IRIX)
 # if defined(WINDOWS)
-#  define CORO_LOOSE 1 /* you don't win with windoze */
+#  define CORO_LOSER 1 /* you don't win with windoze */
 # elif defined(__linux) && defined(__x86)
 # elif defined(HAVE_UCONTEXT_H)
 #  define CORO_UCONTEXT 1
@@ -148,7 +153,7 @@ struct coro_context {
 
 #define coro_transfer(p,n) swapcontext (&((p)->uc), &((n)->uc))
 
-#elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
+#elif CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX
 
 #if defined(CORO_LINUX) && !defined(_GNU_SOURCE)
 # define _GNU_SOURCE // for linux libc
