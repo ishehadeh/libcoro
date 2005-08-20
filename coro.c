@@ -46,7 +46,7 @@
 # endif
 #endif
 
-#if CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
+#if CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX
 
 #if CORO_SJLJ
 # include <stdio.h>
@@ -105,7 +105,7 @@ void coro_create(coro_context *ctx,
 
   makecontext (&(ctx->uc), (void (*)()) coro, 1, arg);
 
-#elif CORO_SJLJ || CORO_LOOSE || CORO_LINUX || CORO_IRIX
+#elif CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX
 
 # if CORO_SJLJ
   stack_t ostk, nstk;
@@ -165,7 +165,7 @@ void coro_create(coro_context *ctx,
 
   sigprocmask (SIG_SETMASK, &osig, 0);
 
-# elif CORO_LOOSE
+# elif CORO_LOSER
 
   setjmp (ctx->env);
   ctx->env[7] = (long)((char *)sptr + ssize);

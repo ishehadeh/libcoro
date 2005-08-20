@@ -42,7 +42,7 @@
 
 /*
  * Changes since API version 1:
- * replaced bogus -DCORO_LOOSE with gramattically more correct -DCORO_LOSER
+ * replaced bogus -DCORO_LOOSE with gramatically more correct -DCORO_LOSER
  */
 
 /*
