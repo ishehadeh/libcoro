@@ -48,9 +48,12 @@
 
 #if CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX
 
+#include <stdlib.h>
+
 #if CORO_SJLJ
 # include <stdio.h>
 # include <signal.h>
+# include <unistd.h>
 #endif
 
 static volatile coro_func coro_init_func;
