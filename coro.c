@@ -40,6 +40,9 @@
 # elif __i386__ && CORO_LINUX
 #  define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss))
 #  define STACK_ADJUST_SIZE(sp,ss) (ss)
+# elif __amd64__ && CORO_LINUX
+#  define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss) - 8)
+#  define STACK_ADJUST_SIZE(sp,ss) (ss)
 # else
 #  define STACK_ADJUST_PTR(sp,ss) (sp)
 #  define STACK_ADJUST_SIZE(sp,ss) (ss)
@@ -190,7 +193,7 @@ void coro_create(coro_context *ctx,
   ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize);
 #elif defined(__GNU_LIBRARY__) && defined(__amd64__)
   ctx->env[0].__jmpbuf[JB_PC]  = (long)coro_init;
-  ctx->env[0].__jmpbuf[JB_RSP] = (long)((char *)sptr + ssize);
+  ctx->env[0].__jmpbuf[JB_RSP] = (long)STACK_ADJUST_PTR (sptr,ssize);
 #else
 #error "linux libc or architecture not supported"
 #endif
