@@ -167,7 +167,7 @@ void coro_create(coro_context *ctx,
   if (~ostk.ss_flags & SS_DISABLE)
     sigaltstack (&ostk, 0);
 
-  sigaction (SIGUSR1, &osa, 0);
+  sigaction (SIGUSR2, &osa, 0);
 
   sigprocmask (SIG_SETMASK, &osig, 0);
 
