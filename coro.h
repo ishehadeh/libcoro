@@ -57,11 +57,11 @@
  *
  *    This flavour uses SUSv2's get/set/swap/makecontext functions that
  *    unfortunately only newer unices support.
- *    Use this for GNU/Linux + glibc-2.2.3.
+ *    Use this for GNU/Linux + glibc-2.2.3 and possibly higher.
  *
  * -DCORO_SJLJ
  *
- *    This flavour uses SUSv'2 setjmp/longjmp and sigaltstack functions to
+ *    This flavour uses SUSv2's setjmp/longjmp and sigaltstack functions to
  *    do it's job. Coroutine creation is much slower than UCONTEXT, but
  *    context switching is often a bit cheaper. It should work on almost
  *    all unices. Use this for GNU/Linux + glibc-2.2. glibc-2.1 and below
@@ -71,7 +71,7 @@
  * -DCORO_LINUX
  *
  *    Old GNU/Linux systems (<= glibc-2.1) work with this implementation
- *    (very fast).
+ *    (it is very fast and therefore recommended over other methods).
  *
  * -DCORO_LOSER
  *
@@ -103,7 +103,7 @@ typedef struct coro_context coro_context;
 
 /*
  * This function creates a new coroutine. Apart from a pointer to an
- * uninitialized coro_context, it expects a pointer to the entry function
+ * uninitialised coro_context, it expects a pointer to the entry function
  * and the single pointer value that is given to it as argument.
  *
  * Allocating/deallocating the stack is your own responsibility, so there is
