@@ -102,7 +102,7 @@ typedef void (*coro_func)(void *);
 /*
  * A coroutine state is saved in the following structure. Treat it as a
  * opaque type. errno and sigmask might be saved, but don't rely on it,
- * implement your own switching primitive.
+ * implement your own switching primitive if you need it.
  */
 typedef struct coro_context coro_context;
 
