@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001-2005 Marc Alexander Lehmann <schmorp@schmorp.de>
+ * Copyright (c) 2001-2006 Marc Alexander Lehmann <schmorp@schmorp.de>
  * 
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
@@ -47,6 +47,10 @@
 #  define STACK_ADJUST_PTR(sp,ss) (sp)
 #  define STACK_ADJUST_SIZE(sp,ss) (ss)
 # endif
+#endif
+
+#if CORO_UCONTEXT
+# include <stddef.h>
 #endif
 
 #if CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX
