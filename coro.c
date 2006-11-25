@@ -196,7 +196,7 @@ void coro_create(coro_context *ctx,
 
 # elif CORO_LINUX
 
-  setjmp (ctx->env);
+  _setjmp (ctx->env);
 #if defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
     && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(JB_PC) && defined(JB_SP)
   ctx->env[0].__jmpbuf[JB_PC] = (long)coro_init;

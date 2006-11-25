@@ -38,6 +38,7 @@
 /*
  * 2006-10-26 Include stddef.h on OS X to work around one of its bugs.
  *            Reported by Michael_G_Schwern.
+ * 2006-11-25 Use _setjmp instead of setjmp on GNU/Linux.
  */
 
 #ifndef CORO_H
