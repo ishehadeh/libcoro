@@ -174,7 +174,7 @@ struct coro_context {
 #if CORO_LINUX
 # define coro_transfer(p,n) do { if (!_setjmp ((p)->env)) _longjmp ((n)->env, 1); } while(0)
 #else
-# define coro_transfer(p,n) do { if (!setjmp ((p)->env)) longjmp ((n)->env, 1); } while(0)
+# define coro_transfer(p,n) do { if (!setjmp  ((p)->env)) longjmp  ((n)->env, 1); } while(0)
 #endif
 
 #endif
