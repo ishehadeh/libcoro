@@ -38,7 +38,7 @@
 /*
  * 2006-10-26 Include stddef.h on OS X to work around one of its bugs.
  *            Reported by Michael_G_Schwern.
- * 2006-11-25 Use _setjmp instead of setjmp on GNU/Linux.
+ * 2006-11-26 Use _setjmp instead of setjmp on GNU/Linux.
  */
 
 #ifndef CORO_H
@@ -171,7 +171,11 @@ struct coro_context {
   jmp_buf env;
 };
 
-#define coro_transfer(p,n) do { if (!setjmp ((p)->env)) longjmp ((n)->env, 1); } while(0)
+#if CORO_LINUX
+# define coro_transfer(p,n) do { if (!_setjmp ((p)->env)) _longjmp ((n)->env, 1); } while(0)
+#else
+# define coro_transfer(p,n) do { if (!setjmp ((p)->env)) longjmp ((n)->env, 1); } while(0)
+#endif
 
 #endif
 
