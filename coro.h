@@ -101,9 +101,9 @@
 typedef void (*coro_func)(void *);
 
 /*
- * A coroutine state is saved in the following structure. Treat it as a
+ * A coroutine state is saved in the following structure. Treat it as an
  * opaque type. errno and sigmask might be saved, but don't rely on it,
- * implement your own switching primitive if you need it.
+ * implement your own switching primitive if you need that.
  */
 typedef struct coro_context coro_context;
 
@@ -115,9 +115,11 @@ typedef struct coro_context coro_context;
  * Allocating/deallocating the stack is your own responsibility, so there is
  * no coro_destroy function.
  */
-void coro_create (coro_context *ctx,
-                  coro_func coro, void *arg,
-                  void *sptr, long ssize);
+void coro_create (coro_context *ctx, /* an uninitialised coro_context */
+                  coro_func coro,    /* the coroutine code to be executed */
+                  void *arg,         /* a single pointer passed to the coro */
+                  void *sptr,        /* start of stack area */
+                  long ssize);       /* size of stack area */
 
 /*
  * The following prototype defines the coroutine switching function. It is
@@ -162,7 +164,7 @@ struct coro_context {
 #elif CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX
 
 #if defined(CORO_LINUX) && !defined(_GNU_SOURCE)
-# define _GNU_SOURCE // for linux libc
+# define _GNU_SOURCE /* for linux libc */
 #endif
 
 #include <setjmp.h>
@@ -172,9 +174,9 @@ struct coro_context {
 };
 
 #if CORO_LINUX
-# define coro_transfer(p,n) do { if (!_setjmp ((p)->env)) _longjmp ((n)->env, 1); } while(0)
+# define coro_transfer(p,n) do { if (!_setjmp ((p)->env)) _longjmp ((n)->env, 1); } while (0)
 #else
-# define coro_transfer(p,n) do { if (!setjmp  ((p)->env)) longjmp  ((n)->env, 1); } while(0)
+# define coro_transfer(p,n) do { if (!setjmp  ((p)->env)) longjmp  ((n)->env, 1); } while (0)
 #endif
 
 #endif

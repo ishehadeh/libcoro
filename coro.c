@@ -100,9 +100,9 @@ trampoline (int sig)
 #endif
 
 /* initialize a machine state */
-void coro_create(coro_context *ctx,
-                 coro_func coro, void *arg,
-                 void *sptr, long ssize)
+void coro_create (coro_context *ctx,
+                  coro_func coro, void *arg,
+                  void *sptr, long ssize)
 {
 #if CORO_UCONTEXT
 
@@ -142,7 +142,10 @@ void coro_create(coro_context *ctx,
   nsa.sa_flags = SA_ONSTACK;
 
   if (sigaction (SIGUSR2, &nsa, &osa))
-    perror ("sigaction");
+    {
+      perror ("sigaction");
+      abort ();
+    }
 
   /* set the new stack */
   nstk.ss_sp    = STACK_ADJUST_PTR (sptr,ssize); /* yes, some platforms (IRIX) get this wrong. */
@@ -150,7 +153,10 @@ void coro_create(coro_context *ctx,
   nstk.ss_flags = 0;
 
   if (sigaltstack (&nstk, &ostk) < 0)
-    perror ("sigaltstack");
+    {
+      perror ("sigaltstack");
+      abort ();
+    }
 
   trampoline_count = 0;
   kill (getpid (), SIGUSR2);
