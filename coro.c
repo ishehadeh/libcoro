@@ -203,20 +203,18 @@ void coro_create (coro_context *ctx,
 # elif CORO_LINUX
 
   _setjmp (ctx->env);
-#if defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
-    && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(JB_PC) && defined(JB_SP)
+#if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined (JB_PC) && defined (JB_SP)
   ctx->env[0].__jmpbuf[JB_PC] = (long)coro_init;
-  ctx->env[0].__jmpbuf[JB_SP] = (long)STACK_ADJUST_PTR (sptr,ssize);
-#elif defined(__GLIBC__) && defined(__GLIBC_MINOR__) \
-    && __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined(__mc68000__)
+  ctx->env[0].__jmpbuf[JB_SP] = (long)STACK_ADJUST_PTR (sptr, ssize);
+#elif __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined (__mc68000__)
   ctx->env[0].__jmpbuf[0].__aregs[0] = (long int)coro_init;
   ctx->env[0].__jmpbuf[0].__sp = (int *)((char *)sptr + ssize);
-#elif defined(__GNU_LIBRARY__) && defined(__i386__)
+#elif defined (__GNU_LIBRARY__) && defined (__i386__)
   ctx->env[0].__jmpbuf[0].__pc = (char *)coro_init;
   ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize);
-#elif defined(__GNU_LIBRARY__) && defined(__amd64__)
+#elif defined (__GNU_LIBRARY__) && defined (__amd64__)
   ctx->env[0].__jmpbuf[JB_PC]  = (long)coro_init;
-  ctx->env[0].__jmpbuf[JB_RSP] = (long)STACK_ADJUST_PTR (sptr,ssize);
+  ctx->env[0].__jmpbuf[JB_RSP] = (long)STACK_ADJUST_PTR (sptr, ssize);
 #else
 #error "linux libc or architecture not supported"
 #endif
@@ -225,7 +223,7 @@ void coro_create (coro_context *ctx,
 
   setjmp (ctx->env);
   ctx->env[JB_PC] = (__uint64_t)coro_init;
-  ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST_PTR (sptr,ssize);
+  ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST_PTR (sptr, ssize);
 
 # endif
 
