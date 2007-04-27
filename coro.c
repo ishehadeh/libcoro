@@ -81,13 +81,7 @@ coro_init (void)
 
   coro_transfer ((coro_context *)new_coro, (coro_context *)create_coro);
 
-#if HAVE_CFI
-  asm (".cfi_startproc");
-#endif
   func ((void *)arg);
-#if HAVE_CFI
-  asm (".cfi_endproc");
-#endif
 
   /* the new coro returned. bad. just abort() for now */
   abort ();
@@ -102,7 +96,15 @@ static void
 trampoline (int sig)
 {
   if (setjmp (((coro_context *)new_coro)->env))
-    coro_init (); /* start it */
+    {
+#if HAVE_CFI
+      asm (".cfi_startproc");
+#endif
+      coro_init (); /* start it */
+#if HAVE_CFI
+      asm (".cfi_endproc");
+#endif
+    }
   else
     trampoline_count++;
 }
