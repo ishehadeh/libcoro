@@ -39,6 +39,7 @@
  * 2006-10-26 Include stddef.h on OS X to work around one of its bugs.
  *            Reported by Michael_G_Schwern.
  * 2006-11-26 Use _setjmp instead of setjmp on GNU/Linux.
+ * 2007-04-27 Set unwind frame info if gcc 3+ and ELF is detected.
  */
 
 #ifndef CORO_H
