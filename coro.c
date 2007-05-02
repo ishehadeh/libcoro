@@ -53,7 +53,7 @@
 # include <stddef.h>
 #endif
 
-#if CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX
+#if CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX || CORO_ASM
 
 #include <stdlib.h>
 
@@ -113,6 +113,46 @@ trampoline (int sig)
 
 #endif
 
+#if CORO_ASM
+void __attribute__((__noinline__, __fastcall__))
+coro_transfer (struct coro_context *prev, struct coro_context *next)
+{
+  asm volatile (
+#if __amd64
+# define NUM_CLOBBERED 5
+     "push %%rbx\n\t"
+     "push %%r12\n\t"
+     "push %%r13\n\t"
+     "push %%r14\n\t"
+     "push %%r15\n\t"
+     "mov  %%rsp, %0\n\t"
+     "mov  %1, %%rsp\n\t"
+     "pop  %%r15\n\t"
+     "pop  %%r14\n\t"
+     "pop  %%r13\n\t"
+     "pop  %%r12\n\t"
+     "pop  %%rbx\n\t"
+#elif __i386
+# define NUM_CLOBBERED 4
+     "push %%ebx\n\t"
+     "push %%esi\n\t"
+     "push %%edi\n\t"
+     "push %%ebp\n\t"
+     "mov  %%esp, %0\n\t"
+     "mov  %1, %%esp\n\t"
+     "pop  %%ebp\n\t"
+     "pop  %%edi\n\t"
+     "pop  %%esi\n\t"
+     "pop  %%ebx\n\t"
+#else
+# error unsupported architecture
+#endif
+     : "=m" (prev->sp)
+     : "m" (next->sp)
+  );
+}
+#endif
+
 /* initialize a machine state */
 void coro_create (coro_context *ctx,
                   coro_func coro, void *arg,
@@ -129,7 +169,7 @@ void coro_create (coro_context *ctx,
 
   makecontext (&(ctx->uc), (void (*)()) coro, 1, arg);
 
-#elif CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX
+#elif CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX || CORO_ASM
 
 # if CORO_SJLJ
   stack_t ostk, nstk;
@@ -230,7 +270,7 @@ void coro_create (coro_context *ctx,
   ctx->env[0].__jmpbuf[JB_PC]  = (long)coro_init;
   ctx->env[0].__jmpbuf[JB_RSP] = (long)STACK_ADJUST_PTR (sptr, ssize);
 #else
-#error "linux libc or architecture not supported"
+# error "linux libc or architecture not supported"
 #endif
 
 # elif CORO_IRIX
@@ -239,12 +279,19 @@ void coro_create (coro_context *ctx,
   ctx->env[JB_PC] = (__uint64_t)coro_init;
   ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST_PTR (sptr, ssize);
 
+# elif CORO_ASM
+
+  ctx->sp = (volatile void **)(ssize + (char *)sptr);
+  *--ctx->sp = (void *)coro_init;
+  *--ctx->sp = (void *)coro_init; // this is needed when the prologue saves ebp
+  ctx->sp -= NUM_CLOBBERED;
+
 # endif
 
   coro_transfer ((coro_context *)create_coro, (coro_context *)new_coro);
 
 #else
-error unsupported architecture
+# error unsupported architecture
 #endif
 }
 

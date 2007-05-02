@@ -41,6 +41,8 @@
  * 2006-11-26 Use _setjmp instead of setjmp on GNU/Linux.
  * 2007-04-27 Set unwind frame info if gcc 3+ and ELF is detected.
  *            Use _setjmp instead of setjmp on _XOPEN_SOURCE >= 600.
+ * 2007-05-02 Add assembly versions for x86 and amd64 (to avoid reliance
+ *            on SIGUSR2 and sigaltstack in Crossfire).
  */
 
 #ifndef CORO_H
@@ -91,6 +93,11 @@
  *
  *    SGI's version of Microsoft's NT ;)
  *
+ * -DCORO_ASM
+ *
+ *    Handcoded assembly, known to work only on a few architectures/ABI:
+ *    ELF Linux x86 && amd64 when gcc is used and optimisation is turned on.
+ *
  * If you define neither of these symbols, coro.h will try to autodetect
  * the model.  This currently works for CORO_LOSER only. For the other
  * alternatives you should check (e.g. using autoconf) and define the
@@ -138,10 +145,11 @@ void coro_transfer(coro_context *prev, coro_context *next);
 
 #if !defined(CORO_LOSER) && !defined(CORO_UCONTEXT) \
     && !defined(CORO_SJLJ) && !defined(CORO_LINUX) \
-    && !defined(CORO_IRIX)
+    && !defined(CORO_IRIX) && !defined(CORO_ASM)
 # if defined(WINDOWS)
 #  define CORO_LOSER 1 /* you don't win with windoze */
-# elif defined(__linux) && defined(__x86)
+# elif defined(__linux) && (defined(__x86) || defined (__amd64))
+#  define CORO_ASM 1
 # elif defined(HAVE_UCONTEXT_H)
 #  define CORO_UCONTEXT 1
 # elif defined(HAVE_SETJMP_H) && defined(HAVE_SIGALTSTACK)
@@ -155,31 +163,40 @@ error unknown or unsupported architecture
 
 #if CORO_UCONTEXT
 
-#include <ucontext.h>
+# include <ucontext.h>
 
 struct coro_context {
   ucontext_t uc;
 };
 
-#define coro_transfer(p,n) swapcontext (&((p)->uc), &((n)->uc))
+# define coro_transfer(p,n) swapcontext (&((p)->uc), &((n)->uc))
 
 #elif CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX
 
-#if defined(CORO_LINUX) && !defined(_GNU_SOURCE)
-# define _GNU_SOURCE /* for linux libc */
-#endif
+# if defined(CORO_LINUX) && !defined(_GNU_SOURCE)
+#  define _GNU_SOURCE /* for linux libc */
+# endif
 
-#include <setjmp.h>
+# include <setjmp.h>
 
 struct coro_context {
   jmp_buf env;
 };
 
-#if CORO_LINUX || (_XOPEN_SOURCE >= 600)
-# define coro_transfer(p,n) do { if (!_setjmp ((p)->env)) _longjmp ((n)->env, 1); } while (0)
-#else
-# define coro_transfer(p,n) do { if (!setjmp  ((p)->env)) longjmp  ((n)->env, 1); } while (0)
-#endif
+# if CORO_LINUX || (_XOPEN_SOURCE >= 600)
+#  define coro_transfer(p,n) do { if (!_setjmp ((p)->env)) _longjmp ((n)->env, 1); } while (0)
+# else
+#  define coro_transfer(p,n) do { if (!setjmp  ((p)->env)) longjmp  ((n)->env, 1); } while (0)
+# endif
+
+#elif CORO_ASM
+
+struct coro_context {
+  volatile void **sp;
+};
+
+void __attribute__ ((__noinline__, __fastcall__))
+     coro_transfer(coro_context *prev, coro_context *next);
 
 #endif
 
