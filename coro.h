@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001-2006 Marc Alexander Lehmann <schmorp@schmorp.de>
+ * Copyright (c) 2001-2008 Marc Alexander Lehmann <schmorp@schmorp.de>
  * 
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
@@ -43,6 +43,7 @@
  *            Use _setjmp instead of setjmp on _XOPEN_SOURCE >= 600.
  * 2007-05-02 Add assembly versions for x86 and amd64 (to avoid reliance
  *            on SIGUSR2 and sigaltstack in Crossfire).
+ * 2008-01-21 Disable CFI usage on anything but GNU/Linux.
  */
 
 #ifndef CORO_H

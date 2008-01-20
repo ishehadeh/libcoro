@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001-2006 Marc Alexander Lehmann <schmorp@schmorp.de>
+ * Copyright (c) 2001-2008 Marc Alexander Lehmann <schmorp@schmorp.de>
  * 
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
@@ -68,8 +68,8 @@ static volatile void *coro_init_arg;
 static volatile coro_context *new_coro, *create_coro;
 
 /* what we really want to detect here is wether we use a new-enough version of GAS */
-/* instead, check for gcc 3 and ELF and hope for the best */
-#if __GNUC__ >= 3 && __ELF__
+/* instead, check for gcc 3, ELF and GNU/Linux and hope for the best */
+#if __GNUC__ >= 3 && __ELF__ && __linux__
 # define HAVE_CFI 1
 #endif
 
