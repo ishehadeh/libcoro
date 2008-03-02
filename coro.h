@@ -11,9 +11,6 @@
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
  * 
- *   3.  The name of the author may not be used to endorse or promote products
- *       derived from this software without specific prior written permission.
- * 
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
  * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
@@ -25,8 +22,19 @@
  * ERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED
  * OF THE POSSIBILITY OF SUCH DAMAGE.
  *
+ * Alternatively, the contents of this file may be used under the terms of
+ * the GNU General Public License ("GPL") version 2 or any later version,
+ * in which case the provisions of the GPL are applicable instead of
+ * the above. If you wish to allow the use of your version of this file
+ * only under the terms of the GPL and not to allow others to use your
+ * version of this file under the BSD license, indicate your decision
+ * by deleting the provisions above and replace them with the notice
+ * and other provisions required by the GPL. If you do not delete the
+ * provisions above, a recipient may use your version of this file under
+ * either the BSD or the GPL.
+ *
  * This library is modelled strictly after Ralf S. Engelschalls article at
- * http://www.gnu.org/software/pth/rse-pmt.ps.  So most of the credit must
+ * http://www.gnu.org/software/pth/rse-pmt.ps. So most of the credit must
  * go to Ralf S. Engelschall <rse@engelschall.com>.
  *
  * This coroutine library is very much stripped down. You should either
@@ -44,6 +52,7 @@
  * 2007-05-02 Add assembly versions for x86 and amd64 (to avoid reliance
  *            on SIGUSR2 and sigaltstack in Crossfire).
  * 2008-01-21 Disable CFI usage on anything but GNU/Linux.
+ * 2008-03-02 Switched to 2-clause BSD license with GPL exception.
  */
 
 #ifndef CORO_H
@@ -68,21 +77,19 @@
  *
  *    This flavour uses SUSv2's get/set/swap/makecontext functions that
  *    unfortunately only newer unices support.
- *    Use this for GNU/Linux + glibc-2.2.3 and possibly higher.
  *
  * -DCORO_SJLJ
  *
  *    This flavour uses SUSv2's setjmp/longjmp and sigaltstack functions to
  *    do it's job. Coroutine creation is much slower than UCONTEXT, but
  *    context switching is often a bit cheaper. It should work on almost
- *    all unices. Use this for GNU/Linux + glibc-2.2. glibc-2.1 and below
- *    do not work with any sane model (neither sigaltstack nor context
- *    functions are implemented)
+ *    all unices.
  *
  * -DCORO_LINUX
  *
- *    Old GNU/Linux systems (<= glibc-2.1) work with this implementation
- *    (it is very fast and therefore recommended over other methods).
+ *    Old GNU/Linux systems (<= glibc-2.1) only work with this implementation
+ *    (it is very fast and therefore recommended over other methods, but
+ *    doesn't work with anything newer).
  *
  * -DCORO_LOSER
  *
@@ -100,7 +107,7 @@
  *    ELF Linux x86 && amd64 when gcc is used and optimisation is turned on.
  *
  * If you define neither of these symbols, coro.h will try to autodetect
- * the model.  This currently works for CORO_LOSER only. For the other
+ * the model. This currently works for CORO_LOSER only. For the other
  * alternatives you should check (e.g. using autoconf) and define the
  * following symbols: HAVE_UCONTEXT_H / HAVE_SETJMP_H / HAVE_SIGALTSTACK.
  */
