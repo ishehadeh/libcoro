@@ -161,6 +161,42 @@ coro_transfer (struct coro_context *prev, struct coro_context *next)
 }
 #endif
 
+#if CORO_PTHREAD
+
+struct coro_init_args {
+  coro_func func;
+  void *arg;
+  coro_context *self, *main;
+};
+
+pthread_mutex_t coro_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+static void *
+trampoline (void *args_)
+{
+  struct coro_init_args *args = (struct coro_init_args *)args_;
+  coro_func func = args->func;
+  void *arg = args->arg;
+
+  pthread_mutex_lock (&coro_mutex);
+  pthread_cond_destroy (&args->self->c);
+  coro_transfer (args->self, args->main);
+  func (arg);
+  pthread_mutex_unlock (&coro_mutex);
+
+  return 0;
+}
+
+void coro_transfer(coro_context *prev, coro_context *next)
+{
+  pthread_cond_init (&prev->c, 0);
+  pthread_cond_signal (&next->c);
+  pthread_cond_wait (&prev->c, &coro_mutex);
+  pthread_cond_destroy (&prev->c);
+}
+
+#endif
+
 /* initialize a machine state */
 void coro_create (coro_context *ctx,
                   coro_func coro, void *arg,
@@ -259,7 +295,7 @@ void coro_create (coro_context *ctx,
   ((_JUMP_BUFFER *)&ctx->env)->StIIP = (__int64)coro_init;
   ((_JUMP_BUFFER *)&ctx->env)->IntSp = (__int64)STACK_ADJUST_PTR (sptr,ssize);
 #else
-#error "microsoft libc or architecture not supported"
+# error "microsoft libc or architecture not supported"
 #endif
 
 # elif CORO_LINUX
@@ -298,8 +334,35 @@ void coro_create (coro_context *ctx,
 
   coro_transfer ((coro_context *)create_coro, (coro_context *)new_coro);
 
+# elif CORO_PTHREAD
+
+  pthread_t id;
+  pthread_attr_t attr;
+  coro_context nctx;
+  struct coro_init_args args;
+  static int once;
+
+  if (!once)
+    {
+      pthread_mutex_lock (&coro_mutex);
+      once = 1;
+    }
+
+  args.func = coro;
+  args.arg  = arg;
+  args.self = ctx;
+  args.main = &nctx;
+
+  pthread_attr_init (&attr);
+  pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_DETACHED);
+  pthread_attr_setstack (&attr, sptr, (size_t)ssize);
+  pthread_create (&id, &attr, trampoline, &args);
+
+  pthread_cond_init (&args.self->c, 0);
+  coro_transfer (args.main, args.self);
+
 #else
-# error unsupported architecture
+# error unsupported backend
 #endif
 }
 

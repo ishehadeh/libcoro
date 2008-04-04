@@ -53,6 +53,7 @@
  *            on SIGUSR2 and sigaltstack in Crossfire).
  * 2008-01-21 Disable CFI usage on anything but GNU/Linux.
  * 2008-03-02 Switched to 2-clause BSD license with GPL exception.
+ * 2008-04-04 New (but highly unrecommended) pthreads backend.
  */
 
 #ifndef CORO_H
@@ -106,6 +107,10 @@
  *    Handcoded assembly, known to work only on a few architectures/ABI:
  *    ELF Linux x86 && amd64 when gcc is used and optimisation is turned on.
  *
+ * -DCORO_PTHREAD
+ *
+ *    Use the pthread API. You have to provide <pthread.h> and -lpthread.
+ *
  * If you define neither of these symbols, coro.h will try to autodetect
  * the model. This currently works for CORO_LOSER only. For the other
  * alternatives you should check (e.g. using autoconf) and define the
@@ -153,7 +158,8 @@ void coro_transfer(coro_context *prev, coro_context *next);
 
 #if !defined(CORO_LOSER) && !defined(CORO_UCONTEXT) \
     && !defined(CORO_SJLJ) && !defined(CORO_LINUX) \
-    && !defined(CORO_IRIX) && !defined(CORO_ASM)
+    && !defined(CORO_IRIX) && !defined(CORO_ASM) \
+    && !defined(CORO_PTHREAD)
 # if defined(WINDOWS)
 #  define CORO_LOSER 1 /* you don't win with windoze */
 # elif defined(__linux) && (defined(__x86) || defined (__amd64))
@@ -204,7 +210,19 @@ struct coro_context {
 };
 
 void __attribute__ ((__noinline__, __fastcall__))
-     coro_transfer(coro_context *prev, coro_context *next);
+     coro_transfer (coro_context *prev, coro_context *next);
+
+#elif CORO_PTHREAD
+
+#include <pthread.h>
+
+extern pthread_mutex_t coro_mutex;
+
+struct coro_context {
+  pthread_cond_t c;
+};
+
+void coro_transfer (coro_context *prev, coro_context *next);
 
 #endif
 
