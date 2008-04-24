@@ -45,10 +45,10 @@
 # if __sgi
 #  define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss) - 8)
 #  define STACK_ADJUST_SIZE(sp,ss) ((ss) - 8)
-# elif __i386__ && CORO_LINUX
+# elif (__i386__ && CORO_LINUX) || (_M_IX86 && CORO_LOSER)
 #  define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss))
 #  define STACK_ADJUST_SIZE(sp,ss) (ss)
-# elif __amd64__ && CORO_LINUX
+# elif (__amd64__ && CORO_LINUX) || ((_M_AMD64 || _M_IA64) && CORO_LOSER)
 #  define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss) - 8)
 #  define STACK_ADJUST_SIZE(sp,ss) (ss)
 # else
@@ -287,13 +287,13 @@ void coro_create (coro_context *ctx,
   ctx->env[8] = (long)coro_init;
 #elif defined(_M_IX86)
   ((_JUMP_BUFFER *)&ctx->env)->Eip   = (long)coro_init;
-  ((_JUMP_BUFFER *)&ctx->env)->Esp   = (long)STACK_ADJUST_PTR (sptr,ssize);
+  ((_JUMP_BUFFER *)&ctx->env)->Esp   = (long)STACK_ADJUST_PTR (sptr, ssize);
 #elif defined(_M_AMD64)
   ((_JUMP_BUFFER *)&ctx->env)->Rip   = (__int64)coro_init;
-  ((_JUMP_BUFFER *)&ctx->env)->Rsp   = (__int64)STACK_ADJUST_PTR (sptr,ssize);
+  ((_JUMP_BUFFER *)&ctx->env)->Rsp   = (__int64)STACK_ADJUST_PTR (sptr, ssize);
 #elif defined(_M_IA64)
   ((_JUMP_BUFFER *)&ctx->env)->StIIP = (__int64)coro_init;
-  ((_JUMP_BUFFER *)&ctx->env)->IntSp = (__int64)STACK_ADJUST_PTR (sptr,ssize);
+  ((_JUMP_BUFFER *)&ctx->env)->IntSp = (__int64)STACK_ADJUST_PTR (sptr, ssize);
 #else
 # error "microsoft libc or architecture not supported"
 #endif
