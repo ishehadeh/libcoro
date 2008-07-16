@@ -122,12 +122,12 @@ trampoline (int sig)
 #endif
 
 #if CORO_ASM
-void __attribute__((__noinline__, __fastcall__))
+void __attribute__((__noinline__, __regparm__(2)))
 coro_transfer (struct coro_context *prev, struct coro_context *next)
 {
   asm volatile (
 #if __amd64
-# define NUM_CLOBBERED 5
+# define NUM_SAVED 5
      "push %%rbx\n\t"
      "push %%r12\n\t"
      "push %%r13\n\t"
@@ -141,7 +141,7 @@ coro_transfer (struct coro_context *prev, struct coro_context *next)
      "pop  %%r12\n\t"
      "pop  %%rbx\n\t"
 #elif __i386
-# define NUM_CLOBBERED 4
+# define NUM_SAVED 4
      "push %%ebx\n\t"
      "push %%esi\n\t"
      "push %%edi\n\t"
@@ -328,7 +328,7 @@ void coro_create (coro_context *ctx,
   ctx->sp = (volatile void **)(ssize + (char *)sptr);
   *--ctx->sp = (void *)coro_init;
   *--ctx->sp = (void *)coro_init; // this is needed when the prologue saves ebp
-  ctx->sp -= NUM_CLOBBERED;
+  ctx->sp -= NUM_SAVED;
 
 # endif
 

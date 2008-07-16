@@ -210,7 +210,7 @@ struct coro_context {
   volatile void **sp;
 };
 
-void __attribute__ ((__noinline__, __fastcall__))
+void __attribute__ ((__noinline__, __regparm__(2)))
      coro_transfer (coro_context *prev, coro_context *next);
 
 #elif CORO_PTHREAD
