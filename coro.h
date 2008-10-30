@@ -55,6 +55,7 @@
  * 2008-03-02 Switched to 2-clause BSD license with GPL exception.
  * 2008-04-04 New (but highly unrecommended) pthreads backend.
  * 2008-04-24 Reinstate CORO_LOSER (had wrong stack adjustments).
+ * 2008-10-30 Support assembly method on x86 with and without frame pointer.
  */
 
 #ifndef CORO_H
