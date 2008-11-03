@@ -122,43 +122,42 @@ trampoline (int sig)
 #endif
 
 #if CORO_ASM
-void __attribute__((__noinline__, __regparm__(2)))
-coro_transfer (struct coro_context *prev, struct coro_context *next)
-{
-  asm volatile (
+asm (
+     ".text\n"
+     ".globl coro_transfer\n"
+     ".type coro_transfer, @function\n"
+     "coro_transfer:\n"
 #if __amd64
 # define NUM_SAVED 5
-     "push %%rbx\n\t"
-     "push %%r12\n\t"
-     "push %%r13\n\t"
-     "push %%r14\n\t"
-     "push %%r15\n\t"
-     "mov  %%rsp, %0\n\t"
-     "mov  %1, %%rsp\n\t"
-     "pop  %%r15\n\t"
-     "pop  %%r14\n\t"
-     "pop  %%r13\n\t"
-     "pop  %%r12\n\t"
-     "pop  %%rbx\n\t"
+     "\tpush %rbx\n"
+     "\tpush %r12\n"
+     "\tpush %r13\n"
+     "\tpush %r14\n"
+     "\tpush %r15\n"
+     "\tmov  %rsp, (%rdi)\n"
+     "\tmov  (%rsi), %rsp\n"
+     "\tpop  %r15\n"
+     "\tpop  %r14\n"
+     "\tpop  %r13\n"
+     "\tpop  %r12\n"
+     "\tpop  %rbx\n"
 #elif __i386
 # define NUM_SAVED 4
-     "push %%ebx\n\t"
-     "push %%esi\n\t"
-     "push %%edi\n\t"
-     "push %%ebp\n\t"
-     "mov  %%esp, %0\n\t"
-     "mov  %1, %%esp\n\t"
-     "pop  %%ebp\n\t"
-     "pop  %%edi\n\t"
-     "pop  %%esi\n\t"
-     "pop  %%ebx\n\t"
+     "\tpush %ebx\n"
+     "\tpush %esi\n"
+     "\tpush %edi\n"
+     "\tpush %ebp\n"
+     "\tmov  %esp, (%eax)\n"
+     "\tmov  (%edx), %esp\n"
+     "\tpop  %ebp\n"
+     "\tpop  %edi\n"
+     "\tpop  %esi\n"
+     "\tpop  %ebx\n"
 #else
 # error unsupported architecture
 #endif
-     : "=m" (prev->sp)
-     : "m" (next->sp)
-  );
-}
+     "\tret\n"
+);
 #endif
 
 #if CORO_PTHREAD
@@ -186,6 +185,8 @@ trampoline (void *args_)
 
   return 0;
 }
+
+asm("");
 
 void coro_transfer(coro_context *prev, coro_context *next)
 {
@@ -329,10 +330,9 @@ void coro_create (coro_context *ctx,
   /* we try to allow for both functions with and without frame pointers */
   *--ctx->sp = (void *)coro_init;
   {
-    void *frame = ctx->sp - 1;
     int i;
     for (i = NUM_SAVED; i--; )
-      *--ctx->sp = frame;
+      *--ctx->sp = 0;
   }
 
 # endif

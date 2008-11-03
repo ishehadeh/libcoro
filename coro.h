@@ -56,6 +56,7 @@
  * 2008-04-04 New (but highly unrecommended) pthreads backend.
  * 2008-04-24 Reinstate CORO_LOSER (had wrong stack adjustments).
  * 2008-10-30 Support assembly method on x86 with and without frame pointer.
+ * 2008-11-03 Use a global asm statement for CORO_ASM, idea by pippijn.
  */
 
 #ifndef CORO_H
@@ -208,11 +209,11 @@ struct coro_context {
 #elif CORO_ASM
 
 struct coro_context {
-  volatile void **sp;
+  volatile void **sp; /* must be at offset 0 */
 };
 
 void __attribute__ ((__noinline__, __regparm__(2)))
-     coro_transfer (coro_context *prev, coro_context *next);
+coro_transfer (coro_context *prev, coro_context *next);
 
 #elif CORO_PTHREAD
 
