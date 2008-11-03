@@ -329,7 +329,7 @@ void coro_create (coro_context *ctx,
   /* we try to allow for both functions with and without frame pointers */
   *--ctx->sp = (void *)coro_init;
   {
-    void **frame = ctx->sp - 1;
+    void *frame = ctx->sp - 1;
     int i;
     for (i = NUM_SAVED; i--; )
       *--ctx->sp = frame;
