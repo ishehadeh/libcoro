@@ -128,6 +128,7 @@ asm (
      ".type coro_transfer, @function\n"
      "coro_transfer:\n"
 #if __amd64
+# define NUM_ALIGN 1
 # define NUM_SAVED 5
      "\tpush %rbx\n"
      "\tpush %r12\n"
@@ -142,6 +143,7 @@ asm (
      "\tpop  %r12\n"
      "\tpop  %rbx\n"
 #elif __i386
+# define NUM_ALIGN 1
 # define NUM_SAVED 4
      "\tpush %ebx\n"
      "\tpush %esi\n"
@@ -209,7 +211,7 @@ void coro_create (coro_context *ctx,
 
   ctx->uc.uc_link           =  0;
   ctx->uc.uc_stack.ss_sp    = STACK_ADJUST_PTR (sptr,ssize);
-  ctx->uc.uc_stack.ss_size  = (size_t) STACK_ADJUST_SIZE (sptr,ssize);
+  ctx->uc.uc_stack.ss_size  = (size_t)STACK_ADJUST_SIZE (sptr,ssize);
   ctx->uc.uc_stack.ss_flags = 0;
 
   makecontext (&(ctx->uc), (void (*)()) coro, 1, arg);
@@ -284,17 +286,17 @@ void coro_create (coro_context *ctx,
 
   setjmp (ctx->env);
 #if __CYGWIN__
-  ctx->env[7] = (long)((char *)sptr + ssize);
+  ctx->env[7] = (long)((char *)sptr + ssize) - sizeof (long);
   ctx->env[8] = (long)coro_init;
 #elif defined(_M_IX86)
   ((_JUMP_BUFFER *)&ctx->env)->Eip   = (long)coro_init;
-  ((_JUMP_BUFFER *)&ctx->env)->Esp   = (long)STACK_ADJUST_PTR (sptr, ssize);
+  ((_JUMP_BUFFER *)&ctx->env)->Esp   = (long)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
 #elif defined(_M_AMD64)
   ((_JUMP_BUFFER *)&ctx->env)->Rip   = (__int64)coro_init;
-  ((_JUMP_BUFFER *)&ctx->env)->Rsp   = (__int64)STACK_ADJUST_PTR (sptr, ssize);
+  ((_JUMP_BUFFER *)&ctx->env)->Rsp   = (__int64)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
 #elif defined(_M_IA64)
   ((_JUMP_BUFFER *)&ctx->env)->StIIP = (__int64)coro_init;
-  ((_JUMP_BUFFER *)&ctx->env)->IntSp = (__int64)STACK_ADJUST_PTR (sptr, ssize);
+  ((_JUMP_BUFFER *)&ctx->env)->IntSp = (__int64)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
 #else
 # error "microsoft libc or architecture not supported"
 #endif
@@ -304,16 +306,16 @@ void coro_create (coro_context *ctx,
   _setjmp (ctx->env);
 #if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined (JB_PC) && defined (JB_SP)
   ctx->env[0].__jmpbuf[JB_PC] = (long)coro_init;
-  ctx->env[0].__jmpbuf[JB_SP] = (long)STACK_ADJUST_PTR (sptr, ssize);
+  ctx->env[0].__jmpbuf[JB_SP] = (long)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
 #elif __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined (__mc68000__)
   ctx->env[0].__jmpbuf[0].__aregs[0] = (long int)coro_init;
-  ctx->env[0].__jmpbuf[0].__sp = (int *)((char *)sptr + ssize);
+  ctx->env[0].__jmpbuf[0].__sp = (int *)((char *)sptr + ssize) - sizeof (long);
 #elif defined (__GNU_LIBRARY__) && defined (__i386__)
   ctx->env[0].__jmpbuf[0].__pc = (char *)coro_init;
-  ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize);
+  ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize) - sizeof (long);
 #elif defined (__GNU_LIBRARY__) && defined (__amd64__)
   ctx->env[0].__jmpbuf[JB_PC]  = (long)coro_init;
-  ctx->env[0].__jmpbuf[JB_RSP] = (long)STACK_ADJUST_PTR (sptr, ssize);
+  ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize) - sizeof (long);
 #else
 # error "linux libc or architecture not supported"
 #endif
@@ -322,18 +324,14 @@ void coro_create (coro_context *ctx,
 
   setjmp (ctx->env);
   ctx->env[JB_PC] = (__uint64_t)coro_init;
-  ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST_PTR (sptr, ssize);
+  ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
 
 # elif CORO_ASM
 
   ctx->sp = (volatile void **)(ssize + (char *)sptr);
-  /* we try to allow for both functions with and without frame pointers */
+  ctx->sp -= NUM_ALIGN;
   *--ctx->sp = (void *)coro_init;
-  {
-    int i;
-    for (i = NUM_SAVED; i--; )
-      *--ctx->sp = 0;
-  }
+  ctx->sp -= NUM_SAVED;
 
 # endif
 
