@@ -59,6 +59,9 @@
  * 2008-11-03 Use a global asm statement for CORO_ASM, idea by pippijn.
  * 2008-11-05 Hopefully fix misaligned stacks with CORO_ASM/SETJMP.
  * 2008-11-07 rbp wasn't saved in CORO_ASM on x86_64.
+ *            introduce coro_destroy, which is a nop except for pthreads.
+ *            speed up CORO_PTHREAD. Do no longer leak threads either.
+ *            coro_create now allows one to create source coro_contexts.
  */
 
 #ifndef CORO_H
@@ -139,8 +142,14 @@ typedef struct coro_context coro_context;
  * uninitialised coro_context, it expects a pointer to the entry function
  * and the single pointer value that is given to it as argument.
  *
- * Allocating/deallocating the stack is your own responsibility, so there is
- * no coro_destroy function.
+ * Allocating/deallocating the stack is your own responsibility.
+ *
+ * As a special case, if coro, arg, sptr and ssize are all zero,
+ * then an "empty" coro_contetx will be created that is suitable
+ * as an initial source for coro_transfer.
+ *
+ * This function is not reentrant, but putting a mutex around it
+ * will work.
  */
 void coro_create (coro_context *ctx, /* an uninitialised coro_context */
                   coro_func coro,    /* the coroutine code to be executed */
@@ -152,8 +161,22 @@ void coro_create (coro_context *ctx, /* an uninitialised coro_context */
  * The following prototype defines the coroutine switching function. It is
  * usually implemented as a macro, so watch out.
  *
-void coro_transfer(coro_context *prev, coro_context *next);
+ * This function is thread-safe and reentrant.
  */
+#if 0
+void coro_transfer (coro_context *prev, coro_context *next);
+#endif
+
+/*
+ * The following prototype defines the coroutine destroy function. It is
+ * usually implemented as a macro, so watch out. It also serves
+ * no purpose unless you want to use the CORO_PTHREAD backend.
+ *
+ * This function is thread-safe and reentrant.
+ */
+#if 0
+void coro_destroy (coro_context *ctx);
+#endif
 
 /*
  * That was it. No other user-visible functions are implemented here.
@@ -189,6 +212,7 @@ struct coro_context {
 };
 
 # define coro_transfer(p,n) swapcontext (&((p)->uc), &((n)->uc))
+# define coro_destroy(ctx) (void *)(ctx)
 
 #elif CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX
 
@@ -208,6 +232,8 @@ struct coro_context {
 #  define coro_transfer(p,n) do { if (!setjmp  ((p)->env)) longjmp  ((n)->env, 1); } while (0)
 # endif
 
+# define coro_destroy(ctx) (void *)(ctx)
+
 #elif CORO_ASM
 
 struct coro_context {
@@ -217,17 +243,21 @@ struct coro_context {
 void __attribute__ ((__noinline__, __regparm__(2)))
 coro_transfer (coro_context *prev, coro_context *next);
 
+# define coro_destroy(ctx) (void *)(ctx)
+
 #elif CORO_PTHREAD
 
-#include <pthread.h>
+# include <pthread.h>
 
 extern pthread_mutex_t coro_mutex;
 
 struct coro_context {
-  pthread_cond_t c;
+  pthread_cond_t cv;
+  pthread_t id;
 };
 
 void coro_transfer (coro_context *prev, coro_context *next);
+void coro_destroy (coro_context *ctx);
 
 #endif
 

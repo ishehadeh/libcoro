@@ -40,6 +40,8 @@
 
 #include "coro.h"
 
+#include <string.h>
+
 #if !defined(STACK_ADJUST_PTR)
 /* IRIX is decidedly NON-unix */
 # if __sgi
@@ -63,13 +65,13 @@
 
 #if CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX || CORO_ASM
 
-#include <stdlib.h>
+# include <stdlib.h>
 
-#if CORO_SJLJ
-# include <stdio.h>
-# include <signal.h>
-# include <unistd.h>
-#endif
+# if CORO_SJLJ
+#  include <stdio.h>
+#  include <signal.h>
+#  include <unistd.h>
+# endif
 
 static volatile coro_func coro_init_func;
 static volatile void *coro_init_arg;
@@ -77,9 +79,9 @@ static volatile coro_context *new_coro, *create_coro;
 
 /* what we really want to detect here is wether we use a new-enough version of GAS */
 /* instead, check for gcc 3, ELF and GNU/Linux and hope for the best */
-#if __GNUC__ >= 3 && __ELF__ && __linux__
-# define HAVE_CFI 1
-#endif
+# if __GNUC__ >= 3 && __ELF__ && __linux__
+#  define HAVE_CFI 1
+# endif
 
 static void
 coro_init (void)
@@ -105,13 +107,13 @@ trampoline (int sig)
 {
   if (setjmp (((coro_context *)new_coro)->env))
     {
-#if HAVE_CFI
+#  if HAVE_CFI
       asm (".cfi_startproc");
-#endif
+#  endif
       coro_init (); /* start it */
-#if HAVE_CFI
+#  if HAVE_CFI
       asm (".cfi_endproc");
-#endif
+#  endif
     }
   else
     trampoline_count++;
@@ -122,55 +124,68 @@ trampoline (int sig)
 #endif
 
 #if CORO_ASM
-asm (
-     ".text\n"
-     ".globl coro_transfer\n"
-     ".type coro_transfer, @function\n"
-     "coro_transfer:\n"
-#if __amd64
-# define NUM_SAVED 6
-     "\tpush %rbp\n"
-     "\tpush %rbx\n"
-     "\tpush %r12\n"
-     "\tpush %r13\n"
-     "\tpush %r14\n"
-     "\tpush %r15\n"
-     "\tmov  %rsp, (%rdi)\n"
-     "\tmov  (%rsi), %rsp\n"
-     "\tpop  %r15\n"
-     "\tpop  %r14\n"
-     "\tpop  %r13\n"
-     "\tpop  %r12\n"
-     "\tpop  %rbx\n"
-     "\tpop  %rbp\n"
-#elif __i386
-# define NUM_SAVED 4
-     "\tpush %ebp\n"
-     "\tpush %ebx\n"
-     "\tpush %esi\n"
-     "\tpush %edi\n"
-     "\tmov  %esp, (%eax)\n"
-     "\tmov  (%edx), %esp\n"
-     "\tpop  %edi\n"
-     "\tpop  %esi\n"
-     "\tpop  %ebx\n"
-     "\tpop  %ebp\n"
-#else
-# error unsupported architecture
-#endif
-     "\tret\n"
-);
+
+  asm (
+       ".text\n"
+       ".globl coro_transfer\n"
+       ".type coro_transfer, @function\n"
+       "coro_transfer:\n"
+# if __amd64
+#  define NUM_SAVED 6
+       "\tpush %rbp\n"
+       "\tpush %rbx\n"
+       "\tpush %r12\n"
+       "\tpush %r13\n"
+       "\tpush %r14\n"
+       "\tpush %r15\n"
+       "\tmov  %rsp, (%rdi)\n"
+       "\tmov  (%rsi), %rsp\n"
+       "\tpop  %r15\n"
+       "\tpop  %r14\n"
+       "\tpop  %r13\n"
+       "\tpop  %r12\n"
+       "\tpop  %rbx\n"
+       "\tpop  %rbp\n"
+# elif __i386
+#  define NUM_SAVED 4
+       "\tpush %ebp\n"
+       "\tpush %ebx\n"
+       "\tpush %esi\n"
+       "\tpush %edi\n"
+       "\tmov  %esp, (%eax)\n"
+       "\tmov  (%edx), %esp\n"
+       "\tpop  %edi\n"
+       "\tpop  %esi\n"
+       "\tpop  %ebx\n"
+       "\tpop  %ebp\n"
+# else
+#  error unsupported architecture
+# endif
+       "\tret\n"
+  );
+
 #endif
 
 #if CORO_PTHREAD
 
-struct coro_init_args {
+/* this mutex will be locked by the running coroutine */
+pthread_mutex_t coro_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct coro_init_args
+{
   coro_func func;
   void *arg;
   coro_context *self, *main;
 };
 
-pthread_mutex_t coro_mutex = PTHREAD_MUTEX_INITIALIZER;
+static pthread_t null_tid;
+
+/* I'd so love to cast pthread_mutex_unlock to void (*)(void *)... */
+static void
+mutex_unlock_wrapper (void *arg)
+{
+  pthread_mutex_unlock ((pthread_mutex_t *)arg);
+}
 
 static void *
 trampoline (void *args_)
@@ -180,32 +195,47 @@ trampoline (void *args_)
   void *arg = args->arg;
 
   pthread_mutex_lock (&coro_mutex);
-  pthread_cond_destroy (&args->self->c);
-  coro_transfer (args->self, args->main);
-  func (arg);
-  pthread_mutex_unlock (&coro_mutex);
+
+  /* we try to be good citizens and use deferred cancellation and cleanup handlers */
+  pthread_cleanup_push (mutex_unlock_wrapper, &coro_mutex);
+    coro_transfer (args->self, args->main);
+    func (arg);
+  pthread_cleanup_pop (1);
 
   return 0;
 }
 
-asm("");
-
-void coro_transfer(coro_context *prev, coro_context *next)
+void
+coro_transfer (coro_context *prev, coro_context *next)
 {
-  pthread_cond_init (&prev->c, 0);
-  pthread_cond_signal (&next->c);
-  pthread_cond_wait (&prev->c, &coro_mutex);
-  pthread_cond_destroy (&prev->c);
+  pthread_cond_signal (&next->cv);
+  pthread_cond_wait (&prev->cv, &coro_mutex);
+}
+
+void
+coro_destroy (coro_context *ctx)
+{
+  if (!pthread_equal (ctx->id, null_tid))
+    {
+      pthread_cancel (ctx->id);
+      pthread_mutex_unlock (&coro_mutex);
+      pthread_join (ctx->id, 0);
+      pthread_mutex_lock (&coro_mutex);
+    }
+
+  pthread_cond_destroy (&ctx->cv);
 }
 
 #endif
 
 /* initialize a machine state */
-void coro_create (coro_context *ctx,
-                  coro_func coro, void *arg,
-                  void *sptr, long ssize)
+void
+coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssize)
 {
 #if CORO_UCONTEXT
+
+  if (!coro)
+    return;
 
   getcontext (&(ctx->uc));
 
@@ -214,7 +244,7 @@ void coro_create (coro_context *ctx,
   ctx->uc.uc_stack.ss_size  = (size_t)STACK_ADJUST_SIZE (sptr,ssize);
   ctx->uc.uc_stack.ss_flags = 0;
 
-  makecontext (&(ctx->uc), (void (*)()) coro, 1, arg);
+  makecontext (&(ctx->uc), (void (*)())coro, 1, arg);
 
 #elif CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX || CORO_ASM
 
@@ -224,6 +254,9 @@ void coro_create (coro_context *ctx,
   sigset_t nsig, osig;
 # endif
   coro_context nctx;
+
+  if (!coro)
+    return;
 
   coro_init_func = coro;
   coro_init_arg  = arg;
@@ -339,30 +372,39 @@ void coro_create (coro_context *ctx,
 
 # elif CORO_PTHREAD
 
-  pthread_t id;
-  pthread_attr_t attr;
-  coro_context nctx;
-  struct coro_init_args args;
+  static coro_context nctx;
   static int once;
 
   if (!once)
     {
-      pthread_mutex_lock (&coro_mutex);
       once = 1;
+
+      pthread_mutex_lock (&coro_mutex);
+      pthread_cond_init (&nctx.cv, 0);
+      null_tid = pthread_self ();
     }
 
-  args.func = coro;
-  args.arg  = arg;
-  args.self = ctx;
-  args.main = &nctx;
+  pthread_cond_init (&ctx->cv, 0);
 
-  pthread_attr_init (&attr);
-  pthread_attr_setdetachstate (&attr, PTHREAD_CREATE_DETACHED);
-  pthread_attr_setstack (&attr, sptr, (size_t)ssize);
-  pthread_create (&id, &attr, trampoline, &args);
+  if (coro)
+    {
+      pthread_attr_t attr;
+      struct coro_init_args args;
 
-  pthread_cond_init (&args.self->c, 0);
-  coro_transfer (args.main, args.self);
+      args.func = coro;
+      args.arg  = arg;
+      args.self = ctx;
+      args.main = &nctx;
+
+      pthread_attr_init (&attr);
+      pthread_attr_setstack (&attr, sptr, (size_t)ssize);
+      pthread_attr_setscope (&attr, PTHREAD_SCOPE_PROCESS);
+      pthread_create (&ctx->id, &attr, trampoline, &args);
+
+      coro_transfer (args.main, args.self);
+    }
+  else
+    ctx->id = null_tid;
 
 #else
 # error unsupported backend
