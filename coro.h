@@ -58,6 +58,7 @@
  * 2008-10-30 Support assembly method on x86 with and without frame pointer.
  * 2008-11-03 Use a global asm statement for CORO_ASM, idea by pippijn.
  * 2008-11-05 Hopefully fix misaligned stacks with CORO_ASM/SETJMP.
+ * 2008-11-07 rbp wasn't saved in CORO_ASM on x86_64.
  */
 
 #ifndef CORO_H

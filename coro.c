@@ -128,8 +128,8 @@ asm (
      ".type coro_transfer, @function\n"
      "coro_transfer:\n"
 #if __amd64
-# define NUM_ALIGN 1
-# define NUM_SAVED 5
+# define NUM_SAVED 6
+     "\tpush %rbp\n"
      "\tpush %rbx\n"
      "\tpush %r12\n"
      "\tpush %r13\n"
@@ -142,19 +142,19 @@ asm (
      "\tpop  %r13\n"
      "\tpop  %r12\n"
      "\tpop  %rbx\n"
+     "\tpop  %rbp\n"
 #elif __i386
-# define NUM_ALIGN 1
 # define NUM_SAVED 4
+     "\tpush %ebp\n"
      "\tpush %ebx\n"
      "\tpush %esi\n"
      "\tpush %edi\n"
-     "\tpush %ebp\n"
      "\tmov  %esp, (%eax)\n"
      "\tmov  (%edx), %esp\n"
-     "\tpop  %ebp\n"
      "\tpop  %edi\n"
      "\tpop  %esi\n"
      "\tpop  %ebx\n"
+     "\tpop  %ebp\n"
 #else
 # error unsupported architecture
 #endif
@@ -329,7 +329,7 @@ void coro_create (coro_context *ctx,
 # elif CORO_ASM
 
   ctx->sp = (volatile void **)(ssize + (char *)sptr);
-  ctx->sp -= NUM_ALIGN;
+  *--ctx->sp = (void *)abort; /* needed for alignment only */
   *--ctx->sp = (void *)coro_init;
   ctx->sp -= NUM_SAVED;
 
