@@ -230,7 +230,11 @@ struct coro_context {
 # include <setjmp.h>
 
 struct coro_context {
+#if _XOPEN_UNIX > 0 || CORO_LOSER
   jmp_buf env;
+#else
+  sigjmp_buf env;
+#endif
 };
 
 # if _XOPEN_UNIX > 0
