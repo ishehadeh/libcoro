@@ -287,7 +287,7 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
 
 # elif CORO_ASM
 
-  ctx->sp = (volatile void **)(ssize + (char *)sptr);
+  ctx->sp = (void **)(ssize + (char *)sptr);
   *--ctx->sp = (void *)abort; /* needed for alignment only */
   *--ctx->sp = (void *)coro_init;
   ctx->sp -= NUM_SAVED;
