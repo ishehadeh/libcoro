@@ -227,6 +227,12 @@ struct coro_context {
 #  include <unistd.h>
 # endif
 
+/* solaris is hopelessly borked, it expands _XOPEN_UNIX to nothing */
+# if __sun
+#  undef _XOPEN_UNIX
+#  define _XOPEN_UNIX 1
+# endif
+
 # include <setjmp.h>
 
 struct coro_context {
