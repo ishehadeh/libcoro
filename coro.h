@@ -62,6 +62,9 @@
  *            introduce coro_destroy, which is a nop except for pthreads.
  *            speed up CORO_PTHREAD. Do no longer leak threads either.
  *            coro_create now allows one to create source coro_contexts.
+ *            do not rely on makecontext passing a void * correctly.
+ *            try harder to get _setjmp/_longjmp.
+ *            major code cleanup/restructuring.
  */
 
 #ifndef CORO_H
@@ -220,16 +223,20 @@ struct coro_context {
 #  define _GNU_SOURCE /* for linux libc */
 # endif
 
+# if !CORO_LOSER
+#  include <unistd.h>
+# endif
+
 # include <setjmp.h>
 
 struct coro_context {
   jmp_buf env;
 };
 
-# if CORO_LINUX || (_XOPEN_SOURCE >= 600)
+# if _XOPEN_UNIX > 0
 #  define coro_transfer(p,n) do { if (!_setjmp ((p)->env)) _longjmp ((n)->env, 1); } while (0)
 # else
-#  define coro_transfer(p,n) do { if (!setjmp  ((p)->env)) longjmp  ((n)->env, 1); } while (0)
+#  define coro_transfer(p,n) do { if (! setjmp ((p)->env))  longjmp ((n)->env, 1); } while (0)
 # endif
 
 # define coro_destroy(ctx) (void *)(ctx)

@@ -42,28 +42,31 @@
 
 #include <string.h>
 
-#if !defined(STACK_ADJUST_PTR)
-/* IRIX is decidedly NON-unix */
-# if __sgi
-#  define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss) - 8)
-#  define STACK_ADJUST_SIZE(sp,ss) ((ss) - 8)
-# elif (__i386__ && CORO_LINUX) || (_M_IX86 && CORO_LOSER)
-#  define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss))
-#  define STACK_ADJUST_SIZE(sp,ss) (ss)
-# elif (__amd64__ && CORO_LINUX) || ((_M_AMD64 || _M_IA64) && CORO_LOSER)
-#  define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss) - 8)
-#  define STACK_ADJUST_SIZE(sp,ss) (ss)
-# else
-#  define STACK_ADJUST_PTR(sp,ss) (sp)
-#  define STACK_ADJUST_SIZE(sp,ss) (ss)
+/*****************************************************************************/
+/* ucontext/setjmp/asm backends                                              */
+/*****************************************************************************/
+#if CORO_UCONTEXT || CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX || CORO_ASM
+
+# if CORO_UCONTEXT
+#  include <stddef.h>
 # endif
-#endif
 
-#if CORO_UCONTEXT
-# include <stddef.h>
-#endif
-
-#if CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX || CORO_ASM
+# if !defined(STACK_ADJUST_PTR)
+#  if __sgi
+/* IRIX is decidedly NON-unix */
+#   define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss) - 8)
+#   define STACK_ADJUST_SIZE(sp,ss) ((ss) - 8)
+#  elif (__i386__ && CORO_LINUX) || (_M_IX86 && CORO_LOSER)
+#   define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss))
+#   define STACK_ADJUST_SIZE(sp,ss) (ss)
+#  elif (__amd64__ && CORO_LINUX) || ((_M_AMD64 || _M_IA64) && CORO_LOSER)
+#   define STACK_ADJUST_PTR(sp,ss) ((char *)(sp) + (ss) - 8)
+#   define STACK_ADJUST_SIZE(sp,ss) (ss)
+#  else
+#   define STACK_ADJUST_PTR(sp,ss) (sp)
+#   define STACK_ADJUST_SIZE(sp,ss) (ss)
+#  endif
+# endif
 
 # include <stdlib.h>
 
@@ -78,7 +81,7 @@ static volatile void *coro_init_arg;
 static volatile coro_context *new_coro, *create_coro;
 
 /* what we really want to detect here is wether we use a new-enough version of GAS */
-/* instead, check for gcc 3, ELF and GNU/Linux and hope for the best */
+/* with dwarf debug info. instead, check for gcc 3, ELF and GNU/Linux and hope for the best */
 # if __GNUC__ >= 3 && __ELF__ && __linux__
 #  define HAVE_CFI 1
 # endif
@@ -99,161 +102,85 @@ coro_init (void)
 
 # if CORO_SJLJ
 
-static volatile int trampoline_count;
+static volatile int trampoline_done;
 
 /* trampoline signal handler */
 static void
 trampoline (int sig)
 {
-  if (setjmp (((coro_context *)new_coro)->env))
-    {
-#  if HAVE_CFI
-      asm (".cfi_startproc");
-#  endif
+  if (
+    #if _XOPEN_UNIX > 0
+      _setjmp (new_coro->env)
+    #else
+      setjmp (new_coro->env)
+    #endif
+  ) {
+      #if HAVE_CFI
+        asm (".cfi_startproc");
+      #endif
       coro_init (); /* start it */
-#  if HAVE_CFI
-      asm (".cfi_endproc");
-#  endif
+      #if HAVE_CFI
+        asm (".cfi_endproc");
+      #endif
     }
   else
-    trampoline_count++;
+    trampoline_done = 1;
 }
 
 # endif
 
-#endif
-
-#if CORO_ASM
+# if CORO_ASM
 
   asm (
        ".text\n"
        ".globl coro_transfer\n"
        ".type coro_transfer, @function\n"
        "coro_transfer:\n"
-# if __amd64
-#  define NUM_SAVED 6
-       "\tpush %rbp\n"
-       "\tpush %rbx\n"
-       "\tpush %r12\n"
-       "\tpush %r13\n"
-       "\tpush %r14\n"
-       "\tpush %r15\n"
-       "\tmov  %rsp, (%rdi)\n"
-       "\tmov  (%rsi), %rsp\n"
-       "\tpop  %r15\n"
-       "\tpop  %r14\n"
-       "\tpop  %r13\n"
-       "\tpop  %r12\n"
-       "\tpop  %rbx\n"
-       "\tpop  %rbp\n"
-# elif __i386
-#  define NUM_SAVED 4
-       "\tpush %ebp\n"
-       "\tpush %ebx\n"
-       "\tpush %esi\n"
-       "\tpush %edi\n"
-       "\tmov  %esp, (%eax)\n"
-       "\tmov  (%edx), %esp\n"
-       "\tpop  %edi\n"
-       "\tpop  %esi\n"
-       "\tpop  %ebx\n"
-       "\tpop  %ebp\n"
-# else
-#  error unsupported architecture
-# endif
+       #if __amd64
+         #define NUM_SAVED 6
+         "\tpush %rbp\n"
+         "\tpush %rbx\n"
+         "\tpush %r12\n"
+         "\tpush %r13\n"
+         "\tpush %r14\n"
+         "\tpush %r15\n"
+         "\tmov  %rsp, (%rdi)\n"
+         "\tmov  (%rsi), %rsp\n"
+         "\tpop  %r15\n"
+         "\tpop  %r14\n"
+         "\tpop  %r13\n"
+         "\tpop  %r12\n"
+         "\tpop  %rbx\n"
+         "\tpop  %rbp\n"
+       #elif __i386
+         #define NUM_SAVED 4
+         "\tpush %ebp\n"
+         "\tpush %ebx\n"
+         "\tpush %esi\n"
+         "\tpush %edi\n"
+         "\tmov  %esp, (%eax)\n"
+         "\tmov  (%edx), %esp\n"
+         "\tpop  %edi\n"
+         "\tpop  %esi\n"
+         "\tpop  %ebx\n"
+         "\tpop  %ebp\n"
+       #else
+         #error unsupported architecture
+       #endif
        "\tret\n"
   );
 
-#endif
+# endif
 
-#if CORO_PTHREAD
-
-/* this mutex will be locked by the running coroutine */
-pthread_mutex_t coro_mutex = PTHREAD_MUTEX_INITIALIZER;
-
-struct coro_init_args
-{
-  coro_func func;
-  void *arg;
-  coro_context *self, *main;
-};
-
-static pthread_t null_tid;
-
-/* I'd so love to cast pthread_mutex_unlock to void (*)(void *)... */
-static void
-mutex_unlock_wrapper (void *arg)
-{
-  pthread_mutex_unlock ((pthread_mutex_t *)arg);
-}
-
-static void *
-trampoline (void *args_)
-{
-  struct coro_init_args *args = (struct coro_init_args *)args_;
-  coro_func func = args->func;
-  void *arg = args->arg;
-
-  pthread_mutex_lock (&coro_mutex);
-
-  /* we try to be good citizens and use deferred cancellation and cleanup handlers */
-  pthread_cleanup_push (mutex_unlock_wrapper, &coro_mutex);
-    coro_transfer (args->self, args->main);
-    func (arg);
-  pthread_cleanup_pop (1);
-
-  return 0;
-}
-
-void
-coro_transfer (coro_context *prev, coro_context *next)
-{
-  pthread_cond_signal (&next->cv);
-  pthread_cond_wait (&prev->cv, &coro_mutex);
-}
-
-void
-coro_destroy (coro_context *ctx)
-{
-  if (!pthread_equal (ctx->id, null_tid))
-    {
-      pthread_cancel (ctx->id);
-      pthread_mutex_unlock (&coro_mutex);
-      pthread_join (ctx->id, 0);
-      pthread_mutex_lock (&coro_mutex);
-    }
-
-  pthread_cond_destroy (&ctx->cv);
-}
-
-#endif
-
-/* initialize a machine state */
 void
 coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssize)
 {
-#if CORO_UCONTEXT
-
-  if (!coro)
-    return;
-
-  getcontext (&(ctx->uc));
-
-  ctx->uc.uc_link           =  0;
-  ctx->uc.uc_stack.ss_sp    = STACK_ADJUST_PTR (sptr,ssize);
-  ctx->uc.uc_stack.ss_size  = (size_t)STACK_ADJUST_SIZE (sptr,ssize);
-  ctx->uc.uc_stack.ss_flags = 0;
-
-  makecontext (&(ctx->uc), (void (*)())coro, 1, arg);
-
-#elif CORO_SJLJ || CORO_LOSER || CORO_LINUX || CORO_IRIX || CORO_ASM
-
+  coro_context nctx;
 # if CORO_SJLJ
   stack_t ostk, nstk;
   struct sigaction osa, nsa;
   sigset_t nsig, osig;
 # endif
-  coro_context nctx;
 
   if (!coro)
     return;
@@ -292,11 +219,11 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
       abort ();
     }
 
-  trampoline_count = 0;
+  trampoline_done = 0;
   kill (getpid (), SIGUSR2);
   sigfillset (&nsig); sigdelset (&nsig, SIGUSR2);
 
-  while (!trampoline_count)
+  while (!trampoline_done)
     sigsuspend (&nsig);
 
   sigaltstack (0, &nstk);
@@ -312,46 +239,45 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
     sigaltstack (&ostk, 0);
 
   sigaction (SIGUSR2, &osa, 0);
-
   sigprocmask (SIG_SETMASK, &osig, 0);
 
 # elif CORO_LOSER
 
   setjmp (ctx->env);
-#if __CYGWIN__
-  ctx->env[7] = (long)((char *)sptr + ssize) - sizeof (long);
-  ctx->env[8] = (long)coro_init;
-#elif defined(_M_IX86)
-  ((_JUMP_BUFFER *)&ctx->env)->Eip   = (long)coro_init;
-  ((_JUMP_BUFFER *)&ctx->env)->Esp   = (long)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
-#elif defined(_M_AMD64)
-  ((_JUMP_BUFFER *)&ctx->env)->Rip   = (__int64)coro_init;
-  ((_JUMP_BUFFER *)&ctx->env)->Rsp   = (__int64)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
-#elif defined(_M_IA64)
-  ((_JUMP_BUFFER *)&ctx->env)->StIIP = (__int64)coro_init;
-  ((_JUMP_BUFFER *)&ctx->env)->IntSp = (__int64)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
-#else
-# error "microsoft libc or architecture not supported"
-#endif
+  #if __CYGWIN__
+    ctx->env[7] = (long)((char *)sptr + ssize) - sizeof (long);
+    ctx->env[8] = (long)coro_init;
+  #elif defined(_M_IX86)
+    ((_JUMP_BUFFER *)&ctx->env)->Eip   = (long)coro_init;
+    ((_JUMP_BUFFER *)&ctx->env)->Esp   = (long)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
+  #elif defined(_M_AMD64)
+    ((_JUMP_BUFFER *)&ctx->env)->Rip   = (__int64)coro_init;
+    ((_JUMP_BUFFER *)&ctx->env)->Rsp   = (__int64)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
+  #elif defined(_M_IA64)
+    ((_JUMP_BUFFER *)&ctx->env)->StIIP = (__int64)coro_init;
+    ((_JUMP_BUFFER *)&ctx->env)->IntSp = (__int64)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
+  #else
+    #error "microsoft libc or architecture not supported"
+  #endif
 
 # elif CORO_LINUX
 
   _setjmp (ctx->env);
-#if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined (JB_PC) && defined (JB_SP)
-  ctx->env[0].__jmpbuf[JB_PC] = (long)coro_init;
-  ctx->env[0].__jmpbuf[JB_SP] = (long)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
-#elif __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined (__mc68000__)
-  ctx->env[0].__jmpbuf[0].__aregs[0] = (long int)coro_init;
-  ctx->env[0].__jmpbuf[0].__sp = (int *)((char *)sptr + ssize) - sizeof (long);
-#elif defined (__GNU_LIBRARY__) && defined (__i386__)
-  ctx->env[0].__jmpbuf[0].__pc = (char *)coro_init;
-  ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize) - sizeof (long);
-#elif defined (__GNU_LIBRARY__) && defined (__amd64__)
-  ctx->env[0].__jmpbuf[JB_PC]  = (long)coro_init;
-  ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize) - sizeof (long);
-#else
-# error "linux libc or architecture not supported"
-#endif
+  #if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined (JB_PC) && defined (JB_SP)
+    ctx->env[0].__jmpbuf[JB_PC] = (long)coro_init;
+    ctx->env[0].__jmpbuf[JB_SP] = (long)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
+  #elif __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined (__mc68000__)
+    ctx->env[0].__jmpbuf[0].__aregs[0] = (long int)coro_init;
+    ctx->env[0].__jmpbuf[0].__sp = (int *)((char *)sptr + ssize) - sizeof (long);
+  #elif defined (__GNU_LIBRARY__) && defined (__i386__)
+    ctx->env[0].__jmpbuf[0].__pc = (char *)coro_init;
+    ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize) - sizeof (long);
+  #elif defined (__GNU_LIBRARY__) && defined (__amd64__)
+    ctx->env[0].__jmpbuf[JB_PC]  = (long)coro_init;
+    ctx->env[0].__jmpbuf[0].__sp = (void *)((char *)sptr + ssize) - sizeof (long);
+  #else
+    #error "linux libc or architecture not supported"
+  #endif
 
 # elif CORO_IRIX
 
@@ -366,12 +292,77 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
   *--ctx->sp = (void *)coro_init;
   ctx->sp -= NUM_SAVED;
 
+# elif CORO_UCONTEXT
+
+  getcontext (&(ctx->uc));
+
+  ctx->uc.uc_link           =  0;
+  ctx->uc.uc_stack.ss_sp    = sptr;
+  ctx->uc.uc_stack.ss_size  = (size_t)ssize;
+  ctx->uc.uc_stack.ss_flags = 0;
+
+  makecontext (&(ctx->uc), (void (*)())coro_init, 0);
+
 # endif
 
-  coro_transfer ((coro_context *)create_coro, (coro_context *)new_coro);
+  coro_transfer (create_coro, new_coro);
+}
 
-# elif CORO_PTHREAD
+#endif
 
+/*****************************************************************************/
+/* pthread backend                                                           */
+/*****************************************************************************/
+
+#if CORO_PTHREAD
+
+/* this mutex will be locked by the running coroutine */
+pthread_mutex_t coro_mutex = PTHREAD_MUTEX_INITIALIZER;
+
+struct coro_init_args
+{
+  coro_func func;
+  void *arg;
+  coro_context *self, *main;
+};
+
+static pthread_t null_tid;
+
+/* I'd so love to cast pthread_mutex_unlock to void (*)(void *)... */
+static void
+mutex_unlock_wrapper (void *arg)
+{
+  pthread_mutex_unlock ((pthread_mutex_t *)arg);
+}
+
+static void *
+coro_init (void *args_)
+{
+  struct coro_init_args *args = (struct coro_init_args *)args_;
+  coro_func func = args->func;
+  void *arg = args->arg;
+
+  pthread_mutex_lock (&coro_mutex);
+
+  /* we try to be good citizens and use deferred cancellation and cleanup handlers */
+  pthread_cleanup_push (mutex_unlock_wrapper, &coro_mutex);
+    coro_transfer (args->self, args->main);
+    func (arg);
+  pthread_cleanup_pop (1);
+
+  return 0;
+}
+
+void
+coro_transfer (coro_context *prev, coro_context *next)
+{
+  pthread_cond_signal (&next->cv);
+  pthread_cond_wait (&prev->cv, &coro_mutex);
+}
+
+void
+coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssize)
+{
   static coro_context nctx;
   static int once;
 
@@ -399,15 +390,27 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
       pthread_attr_init (&attr);
       pthread_attr_setstack (&attr, sptr, (size_t)ssize);
       pthread_attr_setscope (&attr, PTHREAD_SCOPE_PROCESS);
-      pthread_create (&ctx->id, &attr, trampoline, &args);
+      pthread_create (&ctx->id, &attr, coro_init, &args);
 
       coro_transfer (args.main, args.self);
     }
   else
     ctx->id = null_tid;
-
-#else
-# error unsupported backend
-#endif
 }
+
+void
+coro_destroy (coro_context *ctx)
+{
+  if (!pthread_equal (ctx->id, null_tid))
+    {
+      pthread_cancel (ctx->id);
+      pthread_mutex_unlock (&coro_mutex);
+      pthread_join (ctx->id, 0);
+      pthread_mutex_lock (&coro_mutex);
+    }
+
+  pthread_cond_destroy (&ctx->cv);
+}
+
+#endif
 
