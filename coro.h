@@ -234,9 +234,11 @@ struct coro_context {
 };
 
 # if _XOPEN_UNIX > 0
-#  define coro_transfer(p,n) do { if (!_setjmp ((p)->env)) _longjmp ((n)->env, 1); } while (0)
+#  define coro_transfer(p,n) do { if (!  _setjmp ((p)->env   ))   _longjmp ((n)->env, 1); } while (0)
+# elif CORO_LOSER
+#  define coro_transfer(p,n) do { if (!   setjmp ((p)->env   ))    longjmp ((n)->env, 1); } while (0)
 # else
-#  define coro_transfer(p,n) do { if (! setjmp ((p)->env))  longjmp ((n)->env, 1); } while (0)
+#  define coro_transfer(p,n) do { if (!sigsetjmp ((p)->env, 0)) siglongjmp ((n)->env, 1); } while (0)
 # endif
 
 # define coro_destroy(ctx) (void *)(ctx)
@@ -244,7 +246,7 @@ struct coro_context {
 #elif CORO_ASM
 
 struct coro_context {
-  volatile void **sp; /* must be at offset 0 */
+  void **sp; /* must be at offset 0 */
 };
 
 void __attribute__ ((__noinline__, __regparm__(2)))

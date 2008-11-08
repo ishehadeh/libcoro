@@ -76,9 +76,9 @@
 #  include <unistd.h>
 # endif
 
-static volatile coro_func coro_init_func;
-static volatile void *coro_init_arg;
-static volatile coro_context *new_coro, *create_coro;
+static coro_func coro_init_func;
+static void *coro_init_arg;
+static coro_context *new_coro, *create_coro;
 
 /* what we really want to detect here is wether we use a new-enough version of GAS */
 /* with dwarf debug info. instead, check for gcc 3, ELF and GNU/Linux and hope for the best */
@@ -92,7 +92,7 @@ coro_init (void)
   volatile coro_func func = coro_init_func;
   volatile void *arg = coro_init_arg;
 
-  coro_transfer ((coro_context *)new_coro, (coro_context *)create_coro);
+  coro_transfer (new_coro, create_coro);
 
   func ((void *)arg);
 
@@ -112,7 +112,7 @@ trampoline (int sig)
     #if _XOPEN_UNIX > 0
       _setjmp (new_coro->env)
     #else
-      setjmp (new_coro->env)
+      sigsetjmp (new_coro->env, 0)
     #endif
   ) {
       #if HAVE_CFI
@@ -281,7 +281,7 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
 
 # elif CORO_IRIX
 
-  setjmp (ctx->env);
+  sigsetjmp (ctx->env, 0);
   ctx->env[JB_PC] = (__uint64_t)coro_init;
   ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
 
@@ -308,13 +308,10 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
   coro_transfer (create_coro, new_coro);
 }
 
-#endif
-
 /*****************************************************************************/
 /* pthread backend                                                           */
 /*****************************************************************************/
-
-#if CORO_PTHREAD
+#elif CORO_PTHREAD
 
 /* this mutex will be locked by the running coroutine */
 pthread_mutex_t coro_mutex = PTHREAD_MUTEX_INITIALIZER;
@@ -412,5 +409,7 @@ coro_destroy (coro_context *ctx)
   pthread_cond_destroy (&ctx->cv);
 }
 
+#else
+# error unsupported backend
 #endif
 
