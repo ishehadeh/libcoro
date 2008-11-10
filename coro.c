@@ -80,12 +80,6 @@ static coro_func coro_init_func;
 static void *coro_init_arg;
 static coro_context *new_coro, *create_coro;
 
-/* what we really want to detect here is wether we use a new-enough version of GAS */
-/* with dwarf debug info. instead, check for gcc 3, ELF and GNU/Linux and hope for the best */
-# if __GNUC__ >= 3 && __ELF__ && __linux__
-#  define HAVE_CFI 1
-# endif
-
 static void
 coro_init (void)
 {
@@ -115,13 +109,7 @@ trampoline (int sig)
       sigsetjmp (new_coro->env, 0)
     #endif
   ) {
-      #if HAVE_CFI
-        asm (".cfi_startproc");
-      #endif
       coro_init (); /* start it */
-      #if HAVE_CFI
-        asm (".cfi_endproc");
-      #endif
     }
   else
     trampoline_done = 1;

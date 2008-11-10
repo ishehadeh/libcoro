@@ -65,6 +65,7 @@
  *            do not rely on makecontext passing a void * correctly.
  *            try harder to get _setjmp/_longjmp.
  *            major code cleanup/restructuring.
+ * 2008-11-10 the .cfi hacks are no longer needed.
  */
 
 #ifndef CORO_H
