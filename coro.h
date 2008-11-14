@@ -149,7 +149,7 @@ typedef struct coro_context coro_context;
  * Allocating/deallocating the stack is your own responsibility.
  *
  * As a special case, if coro, arg, sptr and ssize are all zero,
- * then an "empty" coro_contetx will be created that is suitable
+ * then an "empty" coro_context will be created that is suitable
  * as an initial source for coro_transfer.
  *
  * This function is not reentrant, but putting a mutex around it
@@ -174,7 +174,9 @@ void coro_transfer (coro_context *prev, coro_context *next);
 /*
  * The following prototype defines the coroutine destroy function. It is
  * usually implemented as a macro, so watch out. It also serves
- * no purpose unless you want to use the CORO_PTHREAD backend.
+ * no purpose unless you want to use the CORO_PTHREAD backend,
+ * where it is used to clean up the thread. You are responsible
+ * for freeing the stack and the context itself.
  *
  * This function is thread-safe and reentrant.
  */
