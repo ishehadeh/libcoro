@@ -66,6 +66,7 @@
  *            try harder to get _setjmp/_longjmp.
  *            major code cleanup/restructuring.
  * 2008-11-10 the .cfi hacks are no longer needed.
+ * 2008-11-16 work around a freebsd pthread bug.
  */
 
 #ifndef CORO_H
@@ -117,11 +118,13 @@
  * -DCORO_ASM
  *
  *    Handcoded assembly, known to work only on a few architectures/ABI:
- *    ELF Linux x86 && amd64 when gcc is used and optimisation is turned on.
+ *    GCC + x86/IA32 and amd64/x86_64 + GNU/Linux and a few BSDs.
  *
  * -DCORO_PTHREAD
  *
  *    Use the pthread API. You have to provide <pthread.h> and -lpthread.
+ *    This is likely the slowest backend, and it also does not support fork(),
+ *    so avoid it at all costs.
  *
  * If you define neither of these symbols, coro.h will try to autodetect
  * the model. This currently works for CORO_LOSER only. For the other
