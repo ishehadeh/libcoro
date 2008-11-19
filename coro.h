@@ -67,6 +67,7 @@
  *            major code cleanup/restructuring.
  * 2008-11-10 the .cfi hacks are no longer needed.
  * 2008-11-16 work around a freebsd pthread bug.
+ * 2008-11-19 define coro_*jmp symbols for easier porting.
  */
 
 #ifndef CORO_H
@@ -241,22 +242,25 @@ struct coro_context {
 
 # include <setjmp.h>
 
-struct coro_context {
-#if _XOPEN_UNIX > 0 || CORO_LOSER
-  jmp_buf env;
-#else
-  sigjmp_buf env;
-#endif
-};
-
-# if _XOPEN_UNIX > 0
-#  define coro_transfer(p,n) do { if (!  _setjmp ((p)->env   ))   _longjmp ((n)->env, 1); } while (0)
+# if _XOPEN_UNIX > 0 || defined (_setjmp)
+#  define coro_jmp_buf      jmp_buf
+#  define coro_setjmp(env)  _setjmp (env)
+#  define coro_longjmp(env) _longjmp ((env), 1)
 # elif CORO_LOSER
-#  define coro_transfer(p,n) do { if (!   setjmp ((p)->env   ))    longjmp ((n)->env, 1); } while (0)
+#  define coro_jmp_buf      jmp_buf
+#  define coro_setjmp(env)  setjmp (env)
+#  define coro_longjmp(env) longjmp ((env), 1)
 # else
-#  define coro_transfer(p,n) do { if (!sigsetjmp ((p)->env, 0)) siglongjmp ((n)->env, 1); } while (0)
+#  define coro_jmp_buf      sigjmp_buf
+#  define coro_setjmp(env)  sigsetjmp (env, 0)
+#  define coro_longjmp(env) siglongjmp ((env), 1)
 # endif
 
+struct coro_context {
+  coro_jmp_buf env;
+};
+
+# define coro_transfer(p,n) do { if (!coro_setjmp ((p)->env)) coro_longjmp ((n)->env); } while (0)
 # define coro_destroy(ctx) (void *)(ctx)
 
 #elif CORO_ASM

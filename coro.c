@@ -102,15 +102,8 @@ static volatile int trampoline_done;
 static void
 trampoline (int sig)
 {
-  if (
-    #if _XOPEN_UNIX > 0
-      _setjmp (new_coro->env)
-    #else
-      sigsetjmp (new_coro->env, 0)
-    #endif
-  ) {
-      coro_init (); /* start it */
-    }
+  if (coro_setjmp (new_coro->env))
+    coro_init (); /* start it */
   else
     trampoline_done = 1;
 }
@@ -231,7 +224,7 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
 
 # elif CORO_LOSER
 
-  setjmp (ctx->env);
+  coro_setjmp (ctx->env);
   #if __CYGWIN__
     ctx->env[7] = (long)((char *)sptr + ssize) - sizeof (long);
     ctx->env[8] = (long)coro_init;
@@ -250,7 +243,7 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
 
 # elif CORO_LINUX
 
-  _setjmp (ctx->env);
+  coro_setjmp (ctx->env);
   #if __GLIBC__ >= 2 && __GLIBC_MINOR__ >= 0 && defined (JB_PC) && defined (JB_SP)
     ctx->env[0].__jmpbuf[JB_PC] = (long)coro_init;
     ctx->env[0].__jmpbuf[JB_SP] = (long)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
@@ -269,7 +262,7 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
 
 # elif CORO_IRIX
 
-  sigsetjmp (ctx->env, 0);
+  coro_setjmp (ctx->env, 0);
   ctx->env[JB_PC] = (__uint64_t)coro_init;
   ctx->env[JB_SP] = (__uint64_t)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
 
