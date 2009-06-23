@@ -68,6 +68,7 @@
  * 2008-11-10 the .cfi hacks are no longer needed.
  * 2008-11-16 work around a freebsd pthread bug.
  * 2008-11-19 define coro_*jmp symbols for easier porting.
+ * 2009-06-23 tentative win32-backend support for mingw32 (Yasuhiro Matsumoto).
  */
 
 #ifndef CORO_H

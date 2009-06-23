@@ -228,6 +228,9 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
   #if __CYGWIN__
     ctx->env[7] = (long)((char *)sptr + ssize) - sizeof (long);
     ctx->env[8] = (long)coro_init;
+  #elif defined(__MINGW32__)
+    ctx->env[4] = (long)((char *)sptr + ssize) - sizeof (long);
+    ctx->env[5] = (long)coro_init;
   #elif defined(_M_IX86)
     ((_JUMP_BUFFER *)&ctx->env)->Eip   = (long)coro_init;
     ((_JUMP_BUFFER *)&ctx->env)->Esp   = (long)STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
