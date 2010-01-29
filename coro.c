@@ -225,9 +225,12 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
 # elif CORO_LOSER
 
   coro_setjmp (ctx->env);
-  #if __CYGWIN__
+  #if __CYGWIN__ && __i386
     ctx->env[8]                        = (long)    coro_init;
     ctx->env[7]                        = (long)    ((char *)sptr + ssize)         - sizeof (long);
+  #elif __CYGWIN__ && __x86_64
+    ctx->env[7]                        = (long)    coro_init;
+    ctx->env[6]                        = (long)    ((char *)sptr + ssize)         - sizeof (long);
   #elif defined(__MINGW32__)
     ctx->env[5]                        = (long)    coro_init;
     ctx->env[4]                        = (long)    ((char *)sptr + ssize)         - sizeof (long);
@@ -236,10 +239,10 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
     ((_JUMP_BUFFER *)&ctx->env)->Esp   = (long)    STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
   #elif defined(_M_AMD64)
     ((_JUMP_BUFFER *)&ctx->env)->Rip   = (__int64) coro_init;
-    ((_JUMP_BUFFER *)&ctx->env)->Rsp   = (__int64) STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
+    ((_JUMP_BUFFER *)&ctx->env)->Rsp   = (__int64) STACK_ADJUST_PTR (sptr, ssize) - sizeof (__int64);
   #elif defined(_M_IA64)
     ((_JUMP_BUFFER *)&ctx->env)->StIIP = (__int64) coro_init;
-    ((_JUMP_BUFFER *)&ctx->env)->IntSp = (__int64) STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
+    ((_JUMP_BUFFER *)&ctx->env)->IntSp = (__int64) STACK_ADJUST_PTR (sptr, ssize) - sizeof (__int64);
   #else
     #error "microsoft libc or architecture not supported"
   #endif
