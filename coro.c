@@ -118,57 +118,53 @@ trampoline (int sig)
        ".type coro_transfer, @function\n"
        "coro_transfer:\n"
        #if __amd64
-         #if CORO_WIN_TIB
-           #define NUM_SAVED 6+3
-           "\tpush %fs:0x0\n"
-           "\tpush %fs:0x8\n"
-           "\tpush %fs:0xc\n"
-         #else
-           #define NUM_SAVED 6
-         #endif
+         #define NUM_SAVED 6
          "\tpush %rbp\n"
          "\tpush %rbx\n"
          "\tpush %r12\n"
          "\tpush %r13\n"
          "\tpush %r14\n"
          "\tpush %r15\n"
+         #if CORO_WIN_TIB
+           "\tpush %fs:0xc\n"
+           "\tpush %fs:0x8\n"
+           "\tpush %fs:0x0\n"
+         #endif
          "\tmov  %rsp, (%rdi)\n"
          "\tmov  (%rsi), %rsp\n"
+         #if CORO_WIN_TIB
+           "\tpop  %fs:0x0\n"
+           "\tpop  %fs:0x8\n"
+           "\tpop  %fs:0xc\n"
+         #endif
          "\tpop  %r15\n"
          "\tpop  %r14\n"
          "\tpop  %r13\n"
          "\tpop  %r12\n"
          "\tpop  %rbx\n"
          "\tpop  %rbp\n"
-         #if CORO_WIN_TIB
-           "\tpop  %fs:0xc\n"
-           "\tpop  %fs:0x8\n"
-           "\tpop  %fs:0x0\n"
-         #endif
        #elif __i386
-         #if CORO_WIN_TIB
-           #define NUM_SAVED 4+3
-           "\tpush %fs:0x0\n"
-           "\tpush %fs:0x4\n"
-           "\tpush %fs:0x8\n"
-         #else
-           #define NUM_SAVED 4
-         #endif
+         #define NUM_SAVED 4
          "\tpush %ebp\n"
          "\tpush %ebx\n"
          "\tpush %esi\n"
          "\tpush %edi\n"
+         #if CORO_WIN_TIB
+           "\tpush %fs:8\n"
+           "\tpush %fs:4\n"
+           "\tpush %fs:0\n"
+         #endif
          "\tmov  %esp, (%eax)\n"
          "\tmov  (%edx), %esp\n"
+         #if CORO_WIN_TIB
+           "\tpop  %fs:0\n"
+           "\tpop  %fs:4\n"
+           "\tpop  %fs:8\n"
+         #endif
          "\tpop  %edi\n"
          "\tpop  %esi\n"
          "\tpop  %ebx\n"
          "\tpop  %ebp\n"
-         #if CORO_WIN_TIB
-           "\tpop  %fs:0x8\n"
-           "\tpop  %fs:0x4\n"
-           "\tpop  %fs:0x0\n"
-         #endif
        #else
          #error unsupported architecture
        #endif
@@ -302,6 +298,12 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
   *--ctx->sp = (void *)abort; /* needed for alignment only */
   *--ctx->sp = (void *)coro_init;
   ctx->sp -= NUM_SAVED;
+
+  #if CORO_WIN_TIB
+  *--ctx->sp = sptr;                 /* StackLimit */
+  *--ctx->sp = (char *)sptr + ssize; /* StackBase */
+  *--ctx->sp = 0;                    /* ExceptionList */
+  #endif
 
 # elif CORO_UCONTEXT
 
