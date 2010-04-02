@@ -118,7 +118,14 @@ trampoline (int sig)
        ".type coro_transfer, @function\n"
        "coro_transfer:\n"
        #if __amd64
-         #define NUM_SAVED 6
+         #if CORO_WIN_TIB
+           #define NUM_SAVED 6+3
+           "\tpush %fs:0x0\n"
+           "\tpush %fs:0x8\n"
+           "\tpush %fs:0xc\n"
+         #else
+           #define NUM_SAVED 6
+         #endif
          "\tpush %rbp\n"
          "\tpush %rbx\n"
          "\tpush %r12\n"
@@ -133,8 +140,20 @@ trampoline (int sig)
          "\tpop  %r12\n"
          "\tpop  %rbx\n"
          "\tpop  %rbp\n"
+         #if CORO_WIN_TIB
+           "\tpop  %fs:0xc\n"
+           "\tpop  %fs:0x8\n"
+           "\tpop  %fs:0x0\n"
+         #endif
        #elif __i386
-         #define NUM_SAVED 4
+         #if CORO_WIN_TIB
+           #define NUM_SAVED 4+3
+           "\tpush %fs:0x0\n"
+           "\tpush %fs:0x4\n"
+           "\tpush %fs:0x8\n"
+         #else
+           #define NUM_SAVED 4
+         #endif
          "\tpush %ebp\n"
          "\tpush %ebx\n"
          "\tpush %esi\n"
@@ -145,6 +164,11 @@ trampoline (int sig)
          "\tpop  %esi\n"
          "\tpop  %ebx\n"
          "\tpop  %ebp\n"
+         #if CORO_WIN_TIB
+           "\tpop  %fs:0x8\n"
+           "\tpop  %fs:0x4\n"
+           "\tpop  %fs:0x0\n"
+         #endif
        #else
          #error unsupported architecture
        #endif
