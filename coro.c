@@ -126,16 +126,16 @@ trampoline (int sig)
          "\tpush %r14\n"
          "\tpush %r15\n"
          #if CORO_WIN_TIB
-           "\tpush %fs:0xc\n"
-           "\tpush %fs:0x8\n"
            "\tpush %fs:0x0\n"
+           "\tpush %fs:0x8\n"
+           "\tpush %fs:0xc\n"
          #endif
          "\tmov  %rsp, (%rdi)\n"
          "\tmov  (%rsi), %rsp\n"
          #if CORO_WIN_TIB
-           "\tpop  %fs:0x0\n"
-           "\tpop  %fs:0x8\n"
            "\tpop  %fs:0xc\n"
+           "\tpop  %fs:0x8\n"
+           "\tpop  %fs:0x0\n"
          #endif
          "\tpop  %r15\n"
          "\tpop  %r14\n"
@@ -150,16 +150,16 @@ trampoline (int sig)
          "\tpush %esi\n"
          "\tpush %edi\n"
          #if CORO_WIN_TIB
-           "\tpush %fs:8\n"
-           "\tpush %fs:4\n"
            "\tpush %fs:0\n"
+           "\tpush %fs:4\n"
+           "\tpush %fs:8\n"
          #endif
          "\tmov  %esp, (%eax)\n"
          "\tmov  (%edx), %esp\n"
          #if CORO_WIN_TIB
-           "\tpop  %fs:0\n"
-           "\tpop  %fs:4\n"
            "\tpop  %fs:8\n"
+           "\tpop  %fs:4\n"
+           "\tpop  %fs:0\n"
          #endif
          "\tpop  %edi\n"
          "\tpop  %esi\n"
@@ -297,13 +297,14 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
   ctx->sp = (void **)(ssize + (char *)sptr);
   *--ctx->sp = (void *)abort; /* needed for alignment only */
   *--ctx->sp = (void *)coro_init;
-  ctx->sp -= NUM_SAVED;
 
   #if CORO_WIN_TIB
-  *--ctx->sp = sptr;                 /* StackLimit */
-  *--ctx->sp = (char *)sptr + ssize; /* StackBase */
   *--ctx->sp = 0;                    /* ExceptionList */
+  *--ctx->sp = (char *)sptr + ssize; /* StackBase */
+  *--ctx->sp = sptr;                 /* StackLimit */
   #endif
+
+  ctx->sp -= NUM_SAVED;
 
 # elif CORO_UCONTEXT
 
