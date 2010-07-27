@@ -74,6 +74,10 @@
 #ifndef CORO_H
 #define CORO_H
 
+#if __cplusplus
+extern "C" {
+#endif
+
 #define CORO_VERSION 2
 
 /*
@@ -289,6 +293,10 @@ struct coro_context {
 void coro_transfer (coro_context *prev, coro_context *next);
 void coro_destroy (coro_context *ctx);
 
+#endif
+
+#if __cplusplus
+}
 #endif
 
 #endif
