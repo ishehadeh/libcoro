@@ -70,6 +70,7 @@
  * 2008-11-19 define coro_*jmp symbols for easier porting.
  * 2009-06-23 tentative win32-backend support for mingw32 (Yasuhiro Matsumoto).
  * 2010-12-03 tentative support for uclibc (which lacks all sorts of things).
+ * 2011-05-30 set initial callee-saved-registers to zero with CORO_ASM.
  */
 
 #ifndef CORO_H
