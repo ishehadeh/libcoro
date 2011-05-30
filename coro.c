@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001-2009 Marc Alexander Lehmann <schmorp@schmorp.de>
+ * Copyright (c) 2001-2011 Marc Alexander Lehmann <schmorp@schmorp.de>
  * 
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
@@ -87,6 +87,11 @@ coro_init (void)
   volatile void *arg = coro_init_arg;
 
   coro_transfer (new_coro, create_coro);
+
+#ifdef __linux && __elf
+  /* we blindly assume on any __linux with __elf we have a new enough gas with .cfi_undefined support */
+  asm (".cfi_undefined rip");
+#endif
 
   func ((void *)arg);
 

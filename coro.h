@@ -71,6 +71,7 @@
  * 2009-06-23 tentative win32-backend support for mingw32 (Yasuhiro Matsumoto).
  * 2010-12-03 tentative support for uclibc (which lacks all sorts of things).
  * 2011-05-30 set initial callee-saved-registers to zero with CORO_ASM.
+ *            use .cfi_undefined rip on linux-elf for better backtraces.
  */
 
 #ifndef CORO_H
