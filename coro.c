@@ -88,8 +88,8 @@ coro_init (void)
 
   coro_transfer (new_coro, create_coro);
 
-#ifdef __linux && __elf
-  /* we blindly assume on any __linux with __elf we have a new enough gas with .cfi_undefined support */
+#if __linux && __amd64
+  /* we blindly assume on any __linux with __amd64 we have a new enough gas with .cfi_undefined support */
   asm (".cfi_undefined rip");
 #endif
 
