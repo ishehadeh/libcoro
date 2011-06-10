@@ -125,31 +125,53 @@ trampoline (int sig)
        /* windows, of course, gives a shit on the amd64 ABI and uses different registers */
        /* http://blogs.msdn.com/freik/archive/2005/03/17/398200.aspx */
        #if __amd64
-         #define NUM_SAVED 6
-         "\tpush %rbp\n"
-         "\tpush %rbx\n"
-         "\tpush %r12\n"
-         "\tpush %r13\n"
-         "\tpush %r14\n"
-         "\tpush %r15\n"
-         #if CORO_WIN_TIB
-           "\tpush %gs:0x0\n"
-           "\tpush %gs:0x8\n"
-           "\tpush %gs:0xc\n"
+         #ifdef _WIN32
+           #define NUM_SAVED 8
+           "\tpush %rsi\n"
+           "\tpush %rdi\n"
+           "\tpush %rbp\n"
+           "\tpush %rbx\n"
+           "\tpush %r12\n"
+           "\tpush %r13\n"
+           "\tpush %r14\n"
+           "\tpush %r15\n"
+           #if CORO_WIN_TIB
+             "\tpush %gs:0x0\n"
+             "\tpush %gs:0x8\n"
+             "\tpush %gs:0xc\n"
+           #endif
+           "\tmov %rsp, (%rcx)\n"
+           "\tmov (%rdx), %rsp\n"
+           #if CORO_WIN_TIB
+             "\tpop %gs:0xc\n"
+             "\tpop %gs:0x8\n"
+             "\tpop %gs:0x0\n"
+           #endif
+           "\tpop %r15\n"
+           "\tpop %r14\n"
+           "\tpop %r13\n"
+           "\tpop %r12\n"
+           "\tpop %rbx\n"
+           "\tpop %rbp\n"
+           "\tpop %rdi\n"
+           "\tpop %rsi\n"
+         #else
+           #define NUM_SAVED 6
+           "\tpush %rbp\n"
+           "\tpush %rbx\n"
+           "\tpush %r12\n"
+           "\tpush %r13\n"
+           "\tpush %r14\n"
+           "\tpush %r15\n"
+           "\tmov %rsp, (%rdi)\n"
+           "\tmov (%rsi), %rsp\n"
+           "\tpop %r15\n"
+           "\tpop %r14\n"
+           "\tpop %r13\n"
+           "\tpop %r12\n"
+           "\tpop %rbx\n"
+           "\tpop %rbp\n"
          #endif
-         "\tmov  %rsp, (%rdi)\n"
-         "\tmov  (%rsi), %rsp\n"
-         #if CORO_WIN_TIB
-           "\tpop  %gs:0xc\n"
-           "\tpop  %gs:0x8\n"
-           "\tpop  %gs:0x0\n"
-         #endif
-         "\tpop  %r15\n"
-         "\tpop  %r14\n"
-         "\tpop  %r13\n"
-         "\tpop  %r12\n"
-         "\tpop  %rbx\n"
-         "\tpop  %rbp\n"
        #elif __i386
          #define NUM_SAVED 4
          "\tpush %ebp\n"
@@ -161,17 +183,17 @@ trampoline (int sig)
            "\tpush %fs:4\n"
            "\tpush %fs:8\n"
          #endif
-         "\tmov  %esp, (%eax)\n"
-         "\tmov  (%edx), %esp\n"
+         "\tmov %esp, (%eax)\n"
+         "\tmov (%edx), %esp\n"
          #if CORO_WIN_TIB
-           "\tpop  %fs:8\n"
-           "\tpop  %fs:4\n"
-           "\tpop  %fs:0\n"
+           "\tpop %fs:8\n"
+           "\tpop %fs:4\n"
+           "\tpop %fs:0\n"
          #endif
-         "\tpop  %edi\n"
-         "\tpop  %esi\n"
-         "\tpop  %ebx\n"
-         "\tpop  %ebp\n"
+         "\tpop %edi\n"
+         "\tpop %esi\n"
+         "\tpop %ebx\n"
+         "\tpop %ebp\n"
        #else
          #error unsupported architecture
        #endif
