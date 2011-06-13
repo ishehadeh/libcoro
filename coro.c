@@ -117,18 +117,20 @@ trampoline (int sig)
 
 # if CORO_ASM
 
+  #if _WIN32
+    #define CORO_WIN_TIB 1
+  #endif
+
   asm (
-       ".text\n"
-       ".globl coro_transfer\n"
-       ".type coro_transfer, @function\n"
+       "\t.text\n"
+       "\t.globl coro_transfer\n"
        "coro_transfer:\n"
        /* windows, of course, gives a shit on the amd64 ABI and uses different registers */
        /* http://blogs.msdn.com/freik/archive/2005/03/17/398200.aspx */
        #if __amd64
-         #ifdef _WIN32
+         #ifdef WIN32
            /* TODO: xmm6..15 also would need to be saved. sigh. */
            #define NUM_SAVED 8
-           #undef CORO_WIN_TIB
            "\tpushq %rsi\n"
            "\tpushq %rdi\n"
            "\tpushq %rbp\n"
@@ -137,8 +139,18 @@ trampoline (int sig)
            "\tpushq %r13\n"
            "\tpushq %r14\n"
            "\tpushq %r15\n"
+           #if CORO_WIN_TIB
+             "\tpushq %fs:0x0\n"
+             "\tpushq %fs:0x8\n"
+             "\tpushq %fs:0xc\n"
+           #endif
            "\tmovq %rsp, (%rcx)\n"
            "\tmovq (%rdx), %rsp\n"
+           #if CORO_WIN_TIB
+             "\tpopq %fs:0xc\n"
+             "\tpopq %fs:0x8\n"
+             "\tpopq %fs:0x0\n"
+           #endif
            "\tpopq %r15\n"
            "\tpopq %r14\n"
            "\tpopq %r13\n"
