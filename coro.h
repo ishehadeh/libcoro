@@ -73,6 +73,7 @@
  * 2011-05-30 set initial callee-saved-registers to zero with CORO_ASM.
  *            use .cfi_undefined rip on linux-amd64 for better backtraces.
  * 2011-06-08 maybe properly implement weird windows amd64 calling conventions.
+ * 2011-07-03 rely on __GCC_HAVE_DWARF2_CFI_ASM for cfi detection.
  */
 
 #ifndef CORO_H

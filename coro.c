@@ -88,8 +88,7 @@ coro_init (void)
 
   coro_transfer (new_coro, create_coro);
 
-#if __linux && __amd64
-  /* we blindly assume on any __linux with __amd64 we have a new enough gas with .cfi_undefined support */
+#if __GCC_HAVE_DWARF2_CFI_ASM && __amd64
   asm (".cfi_undefined rip");
 #endif
 
