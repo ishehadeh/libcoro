@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001-2009 Marc Alexander Lehmann <schmorp@schmorp.de>
+ * Copyright (c) 2001-2011 Marc Alexander Lehmann <schmorp@schmorp.de>
  * 
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
@@ -74,6 +74,7 @@
  *            use .cfi_undefined rip on linux-amd64 for better backtraces.
  * 2011-06-08 maybe properly implement weird windows amd64 calling conventions.
  * 2011-07-03 rely on __GCC_HAVE_DWARF2_CFI_ASM for cfi detection.
+ * 2011-08-08 cygwin trashes stacks, use pthreads with double stack on cygwin.
  */
 
 #ifndef CORO_H

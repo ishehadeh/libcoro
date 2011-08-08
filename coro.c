@@ -438,6 +438,9 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
 #if __UCLIBC__
       /* exists, but is borked */
       /*pthread_attr_setstacksize (&attr, (size_t)ssize);*/
+#elif __CYGWIN__
+      /* POSIX, not here */
+      pthread_attr_setstacksize (&attr, (size_t)ssize);
 #else
       pthread_attr_setstack (&attr, sptr, (size_t)ssize);
 #endif
