@@ -510,7 +510,6 @@ coro_destroy (coro_context *ctx)
 #define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 
-#include <stdio.h>//D
 VOID CALLBACK
 coro_init (PVOID arg)
 {
