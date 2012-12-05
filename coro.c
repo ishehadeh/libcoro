@@ -1,16 +1,16 @@
 /*
  * Copyright (c) 2001-2011 Marc Alexander Lehmann <schmorp@schmorp.de>
- * 
+ *
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
- * 
+ *
  *   1.  Redistributions of source code must retain the above copyright notice,
  *       this list of conditions and the following disclaimer.
- * 
+ *
  *   2.  Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
  * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
@@ -116,20 +116,36 @@ trampoline (int sig)
 
 # if CORO_ASM
 
-  #if _WIN32
+  #if _WIN32 || __CYGWIN__
     #define CORO_WIN_TIB 1
   #endif
 
   asm (
        "\t.text\n"
+       #if _WIN32 || __CYGWIN__
+       "\t.globl _coro_transfer\n"
+       "_coro_transfer:\n"
+       #else
        "\t.globl coro_transfer\n"
        "coro_transfer:\n"
+       #endif
        /* windows, of course, gives a shit on the amd64 ABI and uses different registers */
        /* http://blogs.msdn.com/freik/archive/2005/03/17/398200.aspx */
        #if __amd64
-         #ifdef WIN32
-           /* TODO: xmm6..15 also would need to be saved. sigh. */
-           #define NUM_SAVED 8
+
+         #if _WIN32 || __CYGWIN__
+           #define NUM_SAVED 29
+           "\tsubq $168, %rsp\t" /* one dummy qword to improve alignment */
+           "\tmovaps %xmm6, (%rsp)\n"
+           "\tmovaps %xmm7, 16(%rsp)\n"
+           "\tmovaps %xmm8, 32(%rsp)\n"
+           "\tmovaps %xmm9, 48(%rsp)\n"
+           "\tmovaps %xmm10, 64(%rsp)\n"
+           "\tmovaps %xmm11, 80(%rsp)\n"
+           "\tmovaps %xmm12, 96(%rsp)\n"
+           "\tmovaps %xmm13, 112(%rsp)\n"
+           "\tmovaps %xmm14, 128(%rsp)\n"
+           "\tmovaps %xmm15, 144(%rsp)\n"
            "\tpushq %rsi\n"
            "\tpushq %rdi\n"
            "\tpushq %rbp\n"
@@ -158,6 +174,17 @@ trampoline (int sig)
            "\tpopq %rbp\n"
            "\tpopq %rdi\n"
            "\tpopq %rsi\n"
+           "\tmovaps (%rsp), %xmm6\n"
+           "\tmovaps 16(%rsp), %xmm7\n"
+           "\tmovaps 32(%rsp), %xmm8\n"
+           "\tmovaps 48(%rsp), %xmm9\n"
+           "\tmovaps 64(%rsp), %xmm10\n"
+           "\tmovaps 80(%rsp), %xmm11\n"
+           "\tmovaps 96(%rsp), %xmm12\n"
+           "\tmovaps 112(%rsp), %xmm13\n"
+           "\tmovaps 128(%rsp), %xmm14\n"
+           "\tmovaps 144(%rsp), %xmm15\n"
+           "\taddq $168, %rsp\n"
          #else
            #define NUM_SAVED 6
            "\tpushq %rbp\n"
@@ -175,13 +202,19 @@ trampoline (int sig)
            "\tpopq %rbx\n"
            "\tpopq %rbp\n"
          #endif
+         "\tpopq %rcx\n"
+         "\tjmpq *%rcx\n"
+
        #elif __i386
+
          #define NUM_SAVED 4
          "\tpushl %ebp\n"
          "\tpushl %ebx\n"
          "\tpushl %esi\n"
          "\tpushl %edi\n"
          #if CORO_WIN_TIB
+           #undef NUM_SAVED
+           #define NUM_SAVED 7
            "\tpushl %fs:0\n"
            "\tpushl %fs:4\n"
            "\tpushl %fs:8\n"
@@ -197,10 +230,12 @@ trampoline (int sig)
          "\tpopl %esi\n"
          "\tpopl %ebx\n"
          "\tpopl %ebp\n"
+         "\tpopl %ecx\n"
+         "\tjmpl *%ecx\n"
+
        #else
          #error unsupported architecture
        #endif
-       "\tret\n"
   );
 
 # endif
@@ -283,16 +318,16 @@ coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssiz
   #elif __CYGWIN__ && __x86_64
     ctx->env[7]                        = (long)    coro_init;
     ctx->env[6]                        = (long)    ((char *)sptr + ssize)         - sizeof (long);
-  #elif defined(__MINGW32__)
+  #elif defined __MINGW32__
     ctx->env[5]                        = (long)    coro_init;
     ctx->env[4]                        = (long)    ((char *)sptr + ssize)         - sizeof (long);
-  #elif defined(_M_IX86)
+  #elif defined _M_IX86
     ((_JUMP_BUFFER *)&ctx->env)->Eip   = (long)    coro_init;
     ((_JUMP_BUFFER *)&ctx->env)->Esp   = (long)    STACK_ADJUST_PTR (sptr, ssize) - sizeof (long);
-  #elif defined(_M_AMD64)
+  #elif defined _M_AMD64
     ((_JUMP_BUFFER *)&ctx->env)->Rip   = (__int64) coro_init;
     ((_JUMP_BUFFER *)&ctx->env)->Rsp   = (__int64) STACK_ADJUST_PTR (sptr, ssize) - sizeof (__int64);
-  #elif defined(_M_IA64)
+  #elif defined _M_IA64
     ((_JUMP_BUFFER *)&ctx->env)->StIIP = (__int64) coro_init;
     ((_JUMP_BUFFER *)&ctx->env)->IntSp = (__int64) STACK_ADJUST_PTR (sptr, ssize) - sizeof (__int64);
   #else
@@ -465,6 +500,56 @@ coro_destroy (coro_context *ctx)
     }
 
   pthread_cond_destroy (&ctx->cv);
+}
+
+/*****************************************************************************/
+/* fiber backend                                                             */
+/*****************************************************************************/
+#elif CORO_FIBER
+
+#define WIN32_LEAN_AND_MEAN
+#include <windows.h>
+
+#include <stdio.h>//D
+VOID CALLBACK
+coro_init (PVOID arg)
+{
+  coro_context *ctx = (coro_context *)arg;
+
+  ctx->coro (ctx->arg);
+}
+
+void
+coro_transfer (coro_context *prev, coro_context *next)
+{
+  if (!prev->fiber)
+    {
+      prev->fiber = GetCurrentFiber ();
+
+      if (prev->fiber == 0 || prev->fiber == (void *)0x1e00)
+        prev->fiber = ConvertThreadToFiber (0);
+    }
+
+  SwitchToFiber (next->fiber);
+}
+
+void
+coro_create (coro_context *ctx, coro_func coro, void *arg, void *sptr, long ssize)
+{
+  ctx->fiber = 0;
+  ctx->coro  = coro;
+  ctx->arg   = arg;
+
+  if (!coro)
+    return;
+
+  ctx->fiber = CreateFiber (ssize, coro_init, ctx);
+}
+
+void
+coro_destroy (coro_context *ctx)
+{
+  DeleteFiber (ctx->fiber);
 }
 
 #else

@@ -1,16 +1,16 @@
 /*
- * Copyright (c) 2001-2011 Marc Alexander Lehmann <schmorp@schmorp.de>
- * 
+ * Copyright (c) 2001-2012 Marc Alexander Lehmann <schmorp@schmorp.de>
+ *
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
- * 
+ *
  *   1.  Redistributions of source code must retain the above copyright notice,
  *       this list of conditions and the following disclaimer.
- * 
+ *
  *   2.  Redistributions in binary form must reproduce the above copyright
  *       notice, this list of conditions and the following disclaimer in the
  *       documentation and/or other materials provided with the distribution.
- * 
+ *
  * THIS SOFTWARE IS PROVIDED BY THE AUTHOR ``AS IS'' AND ANY EXPRESS OR IMPLIED
  * WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE IMPLIED WARRANTIES OF MER-
  * CHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE ARE DISCLAIMED.  IN NO
@@ -75,6 +75,8 @@
  * 2011-06-08 maybe properly implement weird windows amd64 calling conventions.
  * 2011-07-03 rely on __GCC_HAVE_DWARF2_CFI_ASM for cfi detection.
  * 2011-08-08 cygwin trashes stacks, use pthreads with double stack on cygwin.
+ * 2012-12-04 reduce misprediction penalty for x86/amd64 assembly switcher.
+ * 2012-12-05 experimental fiber backend (allocates stack twice).
  */
 
 #ifndef CORO_H
@@ -122,6 +124,11 @@ extern "C" {
  *    Microsoft's highly proprietary platform doesn't support sigaltstack, and
  *    this automatically selects a suitable workaround for this platform.
  *    (untested)
+ *
+ * -DCORO_FIBER
+ *
+ *    slower, but probably more portable variant for the Microsoft operating
+ *    system, using fibers. ignores your stack.
  *
  * -DCORO_IRIX
  *
@@ -205,17 +212,19 @@ void coro_destroy (coro_context *ctx);
 
 /*****************************************************************************/
 
-#if !defined(CORO_LOSER) && !defined(CORO_UCONTEXT) \
-    && !defined(CORO_SJLJ) && !defined(CORO_LINUX) \
-    && !defined(CORO_IRIX) && !defined(CORO_ASM) \
-    && !defined(CORO_PTHREAD)
-# if defined(WINDOWS) || defined(_WIN32)
-#  define CORO_LOSER 1 /* you don't win with windoze */
-# elif defined(__linux) && (defined(__x86) || defined (__amd64))
+#if !defined CORO_LOSER      && !defined CORO_UCONTEXT \
+    && !defined CORO_SJLJ    && !defined CORO_LINUX \
+    && !defined CORO_IRIX    && !defined CORO_ASM \
+    && !defined CORO_PTHREAD && !defined CORO_FIBER
+# if defined WINDOWS && (defined __x86 || defined __amd64 || defined _M_IX86 || defined _M_AMD64)
 #  define CORO_ASM 1
-# elif defined(HAVE_UCONTEXT_H)
+# elif defined WINDOWS || defined _WIN32
+#  define CORO_LOSER 1 /* you don't win with windoze */
+# elif defined __linux && (defined __x86 || defined __amd64)
+#  define CORO_ASM 1
+# elif defined HAVE_UCONTEXT_H
 #  define CORO_UCONTEXT 1
-# elif defined(HAVE_SETJMP_H) && defined(HAVE_SIGALTSTACK)
+# elif defined HAVE_SETJMP_H && defined HAVE_SIGALTSTACK
 #  define CORO_SJLJ 1
 # else
 error unknown or unsupported architecture
@@ -298,6 +307,15 @@ struct coro_context {
 
 void coro_transfer (coro_context *prev, coro_context *next);
 void coro_destroy (coro_context *ctx);
+
+#elif CORO_FIBER
+
+struct coro_context {
+  void *fiber;
+  /* only used for initialisation */
+  coro_func coro;
+  void *arg;
+};
 
 #endif
 
