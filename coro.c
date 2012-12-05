@@ -508,6 +508,7 @@ coro_destroy (coro_context *ctx)
 #elif CORO_FIBER
 
 #define WIN32_LEAN_AND_MEAN
+#define _WIN32_WINNT 0x0400
 #include <windows.h>
 
 VOID CALLBACK
