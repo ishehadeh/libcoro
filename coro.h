@@ -78,6 +78,7 @@
  * 2012-12-04 reduce misprediction penalty for x86/amd64 assembly switcher.
  * 2012-12-05 experimental fiber backend (allocates stack twice).
  * 2012-12-07 API version 3 - add coro_stack_alloc/coro_stack_free.
+ * 2012-12-21 valgrind stack registering was broken.
  */
 
 #ifndef CORO_H

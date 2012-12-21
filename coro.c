@@ -674,7 +674,7 @@ coro_stack_alloc (struct coro_stack *stack, unsigned int size)
   #endif
 
   #if CORO_USE_VALGRIND
-    stack->valgrind_id = VALGRIND_STACK_REGISTER ((char *)base, (char *)ssze - CORO_GUARDPAGES * PAGESIZE);
+    stack->valgrind_id = VALGRIND_STACK_REGISTER ((char *)base, ((char *)base) + ssze - CORO_GUARDPAGES * PAGESIZE);
   #endif
 
   stack->sptr = base;
