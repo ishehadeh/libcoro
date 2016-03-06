@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2001-2012 Marc Alexander Lehmann <schmorp@schmorp.de>
+ * Copyright (c) 2001-2012,2015 Marc Alexander Lehmann <schmorp@schmorp.de>
  *
  * Redistribution and use in source and binary forms, with or without modifica-
  * tion, are permitted provided that the following conditions are met:
@@ -79,6 +79,9 @@
  * 2012-12-05 experimental fiber backend (allocates stack twice).
  * 2012-12-07 API version 3 - add coro_stack_alloc/coro_stack_free.
  * 2012-12-21 valgrind stack registering was broken.
+ * 2015-12-05 experimental asm be for arm7, based on a patch by Nick Zavaritsky.
+ *            use __name__ for predefined symbols, as in libecb.
+ *            enable guard pages on arm, aarch64 and mips.
  */
 
 #ifndef CORO_H
@@ -140,8 +143,8 @@ extern "C" {
  * -DCORO_ASM
  *
  *    Hand coded assembly, known to work only on a few architectures/ABI:
- *    GCC + x86/IA32 and amd64/x86_64 + GNU/Linux and a few BSDs. Fastest choice,
- *    if it works.
+ *    GCC + arm7/x86/IA32/amd64/x86_64 + GNU/Linux and a few BSDs. Fastest
+ *    choice, if it works.
  *
  * -DCORO_PTHREAD
  *
@@ -299,11 +302,11 @@ void coro_stack_free (struct coro_stack *stack);
     && !defined CORO_SJLJ    && !defined CORO_LINUX \
     && !defined CORO_IRIX    && !defined CORO_ASM \
     && !defined CORO_PTHREAD && !defined CORO_FIBER
-# if defined WINDOWS && (defined __i386 || (__x86_64 || defined _M_IX86 || defined _M_AMD64)
+# if defined WINDOWS && (defined __i386__ || (__x86_64__ || defined _M_IX86 || defined _M_AMD64)
 #  define CORO_ASM 1
 # elif defined WINDOWS || defined _WIN32
 #  define CORO_LOSER 1 /* you don't win with windoze */
-# elif __linux && (__i386 || (__x86_64 && !__ILP32))
+# elif __linux && (__i386__ || (__x86_64__ && !__ILP32__) || (__arm__ && __ARCH_ARCH == 7))
 #  define CORO_ASM 1
 # elif defined HAVE_UCONTEXT_H
 #  define CORO_UCONTEXT 1
@@ -375,7 +378,11 @@ struct coro_context
   void **sp; /* must be at offset 0 */
 };
 
+#if __i386__ || __x86_64__
 void __attribute__ ((__noinline__, __regparm__(2)))
+#else
+void __attribute__ ((__noinline__))
+#endif
 coro_transfer (coro_context *prev, coro_context *next);
 
 # define coro_destroy(ctx) (void *)(ctx)
