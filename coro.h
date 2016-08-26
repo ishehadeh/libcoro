@@ -306,7 +306,7 @@ void coro_stack_free (struct coro_stack *stack);
 #  define CORO_ASM 1
 # elif defined WINDOWS || defined _WIN32
 #  define CORO_LOSER 1 /* you don't win with windoze */
-# elif __linux && (__i386__ || (__x86_64__ && !__ILP32__) || (__arm__ && __ARCH_ARCH == 7))
+# elif __linux && (__i386__ || (__x86_64__ && !__ILP32__) || (__arm__ && __ARM_ARCH == 7))
 #  define CORO_ASM 1
 # elif defined HAVE_UCONTEXT_H
 #  define CORO_UCONTEXT 1
