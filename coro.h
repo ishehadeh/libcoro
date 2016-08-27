@@ -82,6 +82,8 @@
  * 2015-12-05 experimental asm be for arm7, based on a patch by Nick Zavaritsky.
  *            use __name__ for predefined symbols, as in libecb.
  *            enable guard pages on arm, aarch64 and mips.
+ * 2016-08-27 try to disable _FORTIFY_SOURCE with CORO_SJLJ, as it
+ *            breaks setjmp/longjmp.
  */
 
 #ifndef CORO_H
@@ -335,6 +337,12 @@ struct coro_context
 
 # if defined(CORO_LINUX) && !defined(_GNU_SOURCE)
 #  define _GNU_SOURCE /* for glibc */
+# endif
+
+/* try to disable well-meant but buggy checks in some libcs */
+# ifdef _FORTIFY_SOURCE
+#  undef _FORTIFY_SOURCE
+#  undef __USE_FORTIFY_LEVEL /* helps some more when too much has been included already */
 # endif
 
 # if !CORO_LOSER
