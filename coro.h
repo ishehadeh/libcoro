@@ -83,7 +83,8 @@
  *            use __name__ for predefined symbols, as in libecb.
  *            enable guard pages on arm, aarch64 and mips.
  * 2016-08-27 try to disable _FORTIFY_SOURCE with CORO_SJLJ, as it
- *            breaks setjmp/longjmp.
+ *            breaks setjmp/longjmp. Also disable CORO_ASM for asm by default,
+ *            as it was reported to crash.
  */
 
 #ifndef CORO_H
@@ -308,7 +309,7 @@ void coro_stack_free (struct coro_stack *stack);
 #  define CORO_ASM 1
 # elif defined WINDOWS || defined _WIN32
 #  define CORO_LOSER 1 /* you don't win with windoze */
-# elif __linux && (__i386__ || (__x86_64__ && !__ILP32__) || (__arm__ && __ARM_ARCH == 7))
+# elif __linux && (__i386__ || (__x86_64__ && !__ILP32__) /*|| (__arm__ && __ARM_ARCH == 7)), not working */
 #  define CORO_ASM 1
 # elif defined HAVE_UCONTEXT_H
 #  define CORO_UCONTEXT 1
