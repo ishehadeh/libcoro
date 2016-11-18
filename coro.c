@@ -90,14 +90,14 @@ coro_init (void)
   coro_transfer (new_coro, create_coro);
 
 #if __GCC_HAVE_DWARF2_CFI_ASM && __amd64
-  asm (".cfi_startproc");
-  asm (".cfi_undefined rip");
+  /*asm (".cfi_startproc");*/
+  /*asm (".cfi_undefined rip");*/
 #endif
 
   func ((void *)arg);
 
 #if __GCC_HAVE_DWARF2_CFI_ASM && __amd64
-  asm (".cfi_endproc");
+  /*asm (".cfi_endproc");*/
 #endif
 
   /* the new coro returned. bad. just abort() for now */

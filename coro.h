@@ -85,7 +85,8 @@
  * 2016-08-27 try to disable _FORTIFY_SOURCE with CORO_SJLJ, as it
  *            breaks setjmp/longjmp. Also disable CORO_ASM for asm by default,
  *            as it was reported to crash.
- * 2016-11-18 experimental fix for gcc 6 on amd64 (missing cfi_startproc).
+ * 2016-11-18 disable cfi_undefined again - backtraces might be worse, but
+ *            compile compatibility is improved.
  */
 
 #ifndef CORO_H
