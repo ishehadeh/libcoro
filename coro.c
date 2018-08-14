@@ -596,7 +596,7 @@ coro_destroy (coro_context *ctx)
   if (!pthread_equal (ctx->id, null_tid))
     {
       pthread_cancel (ctx->id);
-      pthread_mutex_unlock (&coro_mutex);
+      pthread_mutex_unlock (&coro_mutex); /* let the other coro run */
       pthread_join (ctx->id, 0);
       pthread_mutex_lock (&coro_mutex);
     }
