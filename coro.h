@@ -87,6 +87,11 @@
  *            as it was reported to crash.
  * 2016-11-18 disable cfi_undefined again - backtraces might be worse, but
  *            compile compatibility is improved.
+ * 2018-08-14 use a completely different pthread strategy that should allow
+ *            sharing of coroutines among different threads. this would
+ *            undefined behaviour before as mutexes would be unlocked on
+ *            a different thread. overall, this might be slower than
+ *            using a pipe for synchronisation, but pipes eat fd's...
  */
 
 #ifndef CORO_H
@@ -406,8 +411,8 @@ extern pthread_mutex_t coro_mutex;
 
 struct coro_context
 {
+  int flags;
   pthread_cond_t cv;
-  pthread_t id;
 };
 
 void coro_transfer (coro_context *prev, coro_context *next);
