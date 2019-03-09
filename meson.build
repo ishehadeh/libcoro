@@ -17,10 +17,11 @@ foreach header : [ 'ucontext.h', 'setjmp.h' ]
   endif
 endforeach
 
+add_global_arguments(cpp_args, language : 'c')
+
 libcoro_inc = include_directories('.')
 libcoro_lib = static_library('coro', 'coro.c',  
-           include_directories: libcoro_inc,
-           cpp_args: cpp_args)
+           include_directories: libcoro_inc)
 
 libcoro_dep = declare_dependency(
             link_with: [ libcoro_lib ],
