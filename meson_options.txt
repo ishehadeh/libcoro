@@ -1,0 +1,4 @@
+option('valgrind', type : 'boolean', value : false)
+option('guardpages', type : 'integer', value : 0)
+option('stackalloc', type : 'boolean', value : true)
+option('coro_backend', type : 'combo', choices : ['ucontext', 'setjmp', 'fiber', 'asm', 'pthread', 'auto'], value : 'auto')

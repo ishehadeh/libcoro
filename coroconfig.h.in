@@ -1,0 +1,18 @@
+#ifndef COROCONFIG_H
+#define COROCONFIG_H
+
+#mesondefine CORO_VERSION
+
+#define CORO_SJLJ @setjmp@
+#define CORO_LINUX @linux@
+#define CORO_LOSER @loser@
+#define CORO_FIBER @fiber@
+#define CORO_IRIX @irix@
+#define CORO_ASM @asm@
+#define CORO_PTHREAD @pthread@
+#define CORO_USE_VALGRIND @valgrind@
+#define CORO_GUARDPAGES @guardpages@
+#define CORO_STACKALLOC @stackalloc@
+
+#endif
+

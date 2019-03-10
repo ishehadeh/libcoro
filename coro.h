@@ -177,8 +177,8 @@ extern "C" {
  * Changes in API version 3:
  * introduced stack management (CORO_STACKALLOC)
  */
-#define CORO_VERSION 3
 
+#include "coroconfig.h"
 #include <stddef.h>
 
 /*
